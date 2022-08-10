@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use std::fs::File;
+use std::path::Path;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -43,59 +44,67 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::PrintLog { path } => {
-            let packages = log::read_packages(&path)?;
-            for (id, usage) in packages {
-                println!("{} {}", id, usage.versions)
-            }
-        }
-        Commands::PrintTree { path } => {
-            let file = File::open(path)?;
-            let deps = tree::parse_tree(file)?;
-            for dep in deps {
-                println!("{} {:?}", dep.id, dep.version);
-            }
-        }
+        Commands::PrintLog { path } => print_log(&path),
+        Commands::PrintTree { path } => print_tree(&path),
         Commands::DiffTree {
             log_path,
             tree_path,
-        } => {
-            let packages = log::read_packages(&log_path)?;
-            let tree = tree::parse_tree(File::open(tree_path)?)?;
+        } => diff_tree(&log_path, &tree_path),
+    }
+}
 
-            // first, make sure that everything in tree is in packages
-            for dep in tree.iter() {
-                match packages.get(&dep.id) {
-                    None => {
-                        eprintln!(
-                            "Tree contains dependency {} not found in build log!",
-                            dep.id
-                        );
-                    }
-                    Some(x) => {
-                        if !x.versions.contains(&dep.version) {
-                            eprintln!(
-                                "Tree contains dependency {} version {} not found in build log!",
-                                dep.id, dep.version
-                            );
-                        }
-                    }
+fn print_tree(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let deps = tree::parse_tree(file)?;
+    for dep in deps {
+        println!("{} {:?}", dep.id, dep.version);
+    }
+    Ok(())
+}
+
+fn print_log(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let packages = log::read_packages(path)?;
+    for (id, usage) in packages {
+        println!("{} {}", id, usage.versions)
+    }
+    Ok(())
+}
+
+fn diff_tree(log_path: &Path, tree_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let packages = log::read_packages(log_path)?;
+    let tree = tree::parse_tree(File::open(tree_path)?)?;
+
+    // first, make sure that everything in tree is in packages
+    for dep in tree.iter() {
+        match packages.get(&dep.id) {
+            None => {
+                eprintln!(
+                    "Tree contains dependency {} not found in build log!",
+                    dep.id
+                );
+            }
+            Some(x) => {
+                if !x.versions.contains(&dep.version) {
+                    eprintln!(
+                        "Tree contains dependency {} version {} not found in build log!",
+                        dep.id, dep.version
+                    );
                 }
             }
+        }
+    }
 
-            // then tell us what's in log that isn't in the tree
-            for (id, usage) in packages.iter() {
-                for version in usage.versions.values() {
-                    if !tree
-                        .iter()
-                        .any(|dep| &dep.id == id && &dep.version == version)
-                    {
-                        eprintln!(
-                            "Log contains dependency {} version {} not found in the tree",
-                            id, version
-                        );
-                    }
-                }
+    // then tell us what's in log that isn't in the tree
+    for (id, usage) in packages.iter() {
+        for version in usage.versions.values() {
+            if !tree
+                .iter()
+                .any(|dep| &dep.id == id && &dep.version == version)
+            {
+                eprintln!(
+                    "Log contains dependency {} version {} not found in the tree",
+                    id, version
+                );
             }
         }
     }
