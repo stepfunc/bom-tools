@@ -37,6 +37,16 @@ pub(crate) struct Versions {
     inner: BTreeSet<semver::Version>,
 }
 
+impl Versions {
+    pub(crate) fn contains(&self, version: &semver::Version) -> bool {
+        self.inner.contains(version)
+    }
+
+    pub(crate) fn values(&self) -> impl Iterator<Item = &semver::Version> {
+        self.inner.iter()
+    }
+}
+
 impl std::fmt::Display for Versions {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
