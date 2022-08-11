@@ -205,6 +205,8 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "semver",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
