@@ -91,11 +91,11 @@ pub(crate) struct BuildLog {
 
 impl BuildLog {
     pub(crate) fn remove_vendor_deps(&mut self, config: &Config) {
-        self.packages
-            .retain(|id, _| !config.build_only.contains(id))
+        self.packages.retain(|id, _| !config.vendor.contains(id))
     }
     pub(crate) fn remove_build_deps(&mut self, config: &Config) {
-        self.packages.retain(|id, _| !config.vendor.contains(id));
+        self.packages
+            .retain(|id, _| !config.build_only.contains(id));
     }
 }
 

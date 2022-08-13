@@ -52,4 +52,16 @@ pub(crate) enum Commands {
         #[clap(value_parser)]
         config_path: std::path::PathBuf,
     },
+    /// writes a bill-of-materials as JSON
+    GenBom {
+        /// path to the log file
+        #[clap(value_parser)]
+        log_path: std::path::PathBuf,
+        /// path to the JSON configuration file
+        #[clap(value_parser)]
+        config_path: std::path::PathBuf,
+        /// path to the output JSON bom file
+        #[clap(value_parser)]
+        output_path: std::path::PathBuf,
+    },
 }

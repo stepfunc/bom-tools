@@ -1,6 +1,7 @@
 use crate::cli::*;
 use crate::config::{Config, LicenseInfo, Package, Source};
 
+use crate::bom::SubjectConfig;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
@@ -37,6 +38,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             log_path,
             config_path,
         } => gen_licenses(&log_path, &config_path),
+        Commands::GenBom {
+            log_path,
+            config_path,
+            output_path,
+        } => gen_bom(&log_path, &config_path, &output_path),
     }
 }
 
@@ -206,5 +212,27 @@ fn gen_licenses(log_path: &Path, config_path: &Path) -> Result<(), Box<dyn std::
         println!();
     }
 
+    Ok(())
+}
+
+fn gen_bom(
+    log_path: &Path,
+    config_path: &Path,
+    output_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let log = log::read_log(log_path)?;
+    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
+
+    let subject = SubjectConfig {
+        crate_name: "rodbus-ffi".to_string(),
+        vendor_name: "Step Function I/O LLC".to_string(),
+    };
+
+    let bom = bom::create_bom(subject, log, config)?;
+
+    serde_json::to_writer_pretty(
+        std::io::BufWriter::new(std::fs::File::create(output_path)?),
+        &bom,
+    )?;
     Ok(())
 }
