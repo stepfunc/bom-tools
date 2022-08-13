@@ -1,3 +1,4 @@
+use crate::Config;
 use cargo_metadata::Message;
 use clap::Parser;
 use std::collections::{BTreeMap, BTreeSet};
@@ -84,7 +85,21 @@ impl FromStr for PackageInfo {
     }
 }
 
-pub(crate) fn read_packages(path: &Path) -> Result<BTreeMap<String, PackageUsage>, Box<dyn Error>> {
+pub(crate) struct BuildLog {
+    pub(crate) packages: BTreeMap<String, PackageUsage>,
+}
+
+impl BuildLog {
+    pub(crate) fn remove_vendor_deps(&mut self, config: &Config) {
+        self.packages
+            .retain(|id, _| !config.build_only.contains(id))
+    }
+    pub(crate) fn remove_build_deps(&mut self, config: &Config) {
+        self.packages.retain(|id, _| !config.vendor.contains(id));
+    }
+}
+
+pub(crate) fn read_log(path: &Path) -> Result<BuildLog, Box<dyn Error>> {
     let file = std::fs::File::open(path)?;
 
     let reader = std::io::BufReader::new(file);
@@ -108,5 +123,5 @@ pub(crate) fn read_packages(path: &Path) -> Result<BTreeMap<String, PackageUsage
             }
         }
     }
-    Ok(packages)
+    Ok(BuildLog { packages })
 }
