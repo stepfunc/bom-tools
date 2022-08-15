@@ -81,11 +81,16 @@ impl Package {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct VendorPackage {
+    pub(crate) url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Config {
     /// packages that are build-only dependencies, are not linked/distributed, and are ignored in the build log
     pub(crate) build_only: BTreeSet<String>,
     /// packages that are licensed by the vendor and are distributed under a custom license
-    pub(crate) vendor: BTreeSet<String>,
+    pub(crate) vendor: BTreeMap<String, VendorPackage>,
     /// 3rd party packages that are allowed to be build dependencies
     pub(crate) third_party: BTreeMap<String, Package>,
 }

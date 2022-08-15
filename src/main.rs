@@ -39,10 +39,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             config_path,
         } => gen_licenses(&log_path, &config_path),
         Commands::GenBom {
+            subject_name,
             log_path,
             config_path,
             output_path,
-        } => gen_bom(&log_path, &config_path, &output_path),
+        } => gen_bom(subject_name, &log_path, &config_path, &output_path),
     }
 }
 
@@ -216,16 +217,25 @@ fn gen_licenses(log_path: &Path, config_path: &Path) -> Result<(), Box<dyn std::
 }
 
 fn gen_bom(
+    subject: String,
     log_path: &Path,
     config_path: &Path,
     output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let log = log::read_log(log_path)?;
-    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
+    let mut config: Config = serde_json::from_reader(File::open(config_path)?)?;
+
+    // the subject must be one of the vendor crates
+    let subject_pkg = match config.vendor.remove(&subject) {
+        None => {
+            return Err(format!("subject {} is not in the vendor package list", subject).into())
+        }
+        Some(pkg) => pkg,
+    };
 
     let subject = SubjectConfig {
-        crate_name: "rodbus-ffi".to_string(),
-        vendor_name: "Step Function I/O LLC".to_string(),
+        crate_name: subject.clone(),
+        url: subject_pkg.url,
     };
 
     let bom = bom::create_bom(subject, log, config)?;

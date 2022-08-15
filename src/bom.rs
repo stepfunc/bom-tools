@@ -25,8 +25,8 @@ pub(crate) enum LicenseType {
 pub(crate) struct Subject {
     /// The crate name
     crate_name: String,
-    /// The name of the vendor
-    vendor_name: String,
+    /// url of the subject crate
+    url: String,
     /// Version of the library
     version: semver::Version,
 }
@@ -57,7 +57,7 @@ pub(crate) struct Bom {
 
 pub(crate) struct SubjectConfig {
     pub(crate) crate_name: String,
-    pub(crate) vendor_name: String,
+    pub(crate) url: String,
 }
 
 pub(crate) fn create_bom(
@@ -95,42 +95,45 @@ pub(crate) fn create_bom(
 
     let subject = Subject {
         crate_name: subject_config.crate_name,
-        vendor_name: subject_config.vendor_name,
         version: subject_version,
+        url: subject_config.url,
     };
 
     let mut dependencies = Vec::new();
     for (id, usage) in log.packages {
         // check if this is vendor dependency
-        let dep = if config.vendor.contains(&id) {
-            Dependency {
+        let dep = match config.vendor.get(&id) {
+            Some(pkg) => Dependency {
                 crate_name: id.clone(),
-                url: "TODO".to_string(),
+                url: pkg.url.to_string(),
                 versions: usage.versions.values().cloned().collect(),
                 license: LicenseType::Vendor,
-            }
-        } else {
-            let pkg = match config.third_party.get(&id) {
-                Some(x) => x,
-                None => {
-                    return Err(format!("3rd party package not found in allow-list: {}", id).into())
+            },
+            None => {
+                let pkg = match config.third_party.get(&id) {
+                    Some(x) => x,
+                    None => {
+                        return Err(
+                            format!("3rd party package not found in allow-list: {}", id).into()
+                        )
+                    }
+                };
+
+                let licenses: Vec<OpenSource> = pkg
+                    .licenses
+                    .iter()
+                    .map(|lic| OpenSource {
+                        spdx_short: lic.spdx_short().to_string(),
+                        copyrights: lic.copyright(),
+                    })
+                    .collect();
+
+                Dependency {
+                    crate_name: id.clone(),
+                    url: pkg.url(),
+                    versions: usage.versions.values().cloned().collect(),
+                    license: LicenseType::OpenSource(licenses),
                 }
-            };
-
-            let licenses: Vec<OpenSource> = pkg
-                .licenses
-                .iter()
-                .map(|lic| OpenSource {
-                    spdx_short: lic.spdx_short().to_string(),
-                    copyrights: lic.copyright(),
-                })
-                .collect();
-
-            Dependency {
-                crate_name: id.clone(),
-                url: pkg.url(),
-                versions: usage.versions.values().cloned().collect(),
-                license: LicenseType::OpenSource(licenses),
             }
         };
 

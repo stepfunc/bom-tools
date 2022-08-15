@@ -54,6 +54,9 @@ pub(crate) enum Commands {
     },
     /// writes a bill-of-materials as JSON
     GenBom {
+        /// subject of the BOM
+        #[clap(value_parser)]
+        subject_name: String,
         /// path to the log file
         #[clap(value_parser)]
         log_path: std::path::PathBuf,
