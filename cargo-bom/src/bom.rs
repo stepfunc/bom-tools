@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 use crate::config::Config;
 use crate::log::BuildLog;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum BinaryType {

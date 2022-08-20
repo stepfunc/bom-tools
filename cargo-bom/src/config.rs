@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+
+use serde::{Deserialize, Serialize};
 
 /// A copyright statement associated with a license
 #[derive(Serialize, Deserialize, Debug)]

@@ -1,12 +1,12 @@
-use crate::cli::*;
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::path::Path;
 
 use cargo_bom::bom::SubjectConfig;
 use cargo_bom::config::{Config, LicenseInfo, Package, Source};
 use cargo_bom::{bom, log};
 
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::path::Path;
+use crate::cli::*;
 
 /// cli interface for the application
 pub(crate) mod cli;

@@ -1,11 +1,12 @@
-use crate::config::Config;
-use cargo_metadata::Message;
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt::Formatter;
 use std::path::Path;
 use std::str::FromStr;
+
+use cargo_metadata::Message;
+
+use crate::config::Config;
 
 #[derive(Debug)]
 struct PackageInfo {
