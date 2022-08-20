@@ -1,19 +1,11 @@
-use crate::Config;
+use crate::config::Config;
 use cargo_metadata::Message;
-use clap::Parser;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt::Formatter;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str::FromStr;
-
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
-struct Args {
-    /// path to Cargo.toml
-    #[clap(short, long, value_parser)]
-    build_log: PathBuf,
-}
 
 #[derive(Debug)]
 struct PackageInfo {
@@ -34,16 +26,16 @@ impl From<PackageInfo> for PackageUsage {
 }
 
 #[derive(Debug)]
-pub(crate) struct Versions {
+pub struct Versions {
     inner: BTreeSet<semver::Version>,
 }
 
 impl Versions {
-    pub(crate) fn contains(&self, version: &semver::Version) -> bool {
+    pub fn contains(&self, version: &semver::Version) -> bool {
         self.inner.contains(version)
     }
 
-    pub(crate) fn values(&self) -> impl Iterator<Item = &semver::Version> {
+    pub fn values(&self) -> impl Iterator<Item = &semver::Version> {
         self.inner.iter()
     }
 }
@@ -58,9 +50,9 @@ impl std::fmt::Display for Versions {
 }
 
 #[derive(Debug)]
-pub(crate) struct PackageUsage {
-    pub(crate) versions: Versions,
-    pub(crate) source: String,
+pub struct PackageUsage {
+    pub versions: Versions,
+    pub source: String,
 }
 
 fn error<S: AsRef<str>>(text: S) -> Box<dyn std::error::Error> {
@@ -85,22 +77,22 @@ impl FromStr for PackageInfo {
     }
 }
 
-pub(crate) struct BuildLog {
-    pub(crate) packages: BTreeMap<String, PackageUsage>,
+pub struct BuildLog {
+    pub packages: BTreeMap<String, PackageUsage>,
 }
 
 impl BuildLog {
-    pub(crate) fn remove_vendor_deps(&mut self, config: &Config) {
+    pub fn remove_vendor_deps(&mut self, config: &Config) {
         self.packages
             .retain(|id, _| !config.vendor.contains_key(id))
     }
-    pub(crate) fn remove_build_deps(&mut self, config: &Config) {
+    pub fn remove_build_deps(&mut self, config: &Config) {
         self.packages
             .retain(|id, _| !config.build_only.contains(id));
     }
 }
 
-pub(crate) fn read_log(path: &Path) -> Result<BuildLog, Box<dyn Error>> {
+pub fn read_log(path: &Path) -> Result<BuildLog, Box<dyn Error>> {
     let file = std::fs::File::open(path)?;
 
     let reader = std::io::BufReader::new(file);

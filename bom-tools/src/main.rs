@@ -1,19 +1,15 @@
 use crate::cli::*;
-use crate::config::{Config, LicenseInfo, Package, Source};
 
-use crate::bom::SubjectConfig;
+use cargo_bom::bom::SubjectConfig;
+use cargo_bom::config::{Config, LicenseInfo, Package, Source};
+use cargo_bom::{bom, log};
+
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
-/// model for a custom bill of materials
-pub(crate) mod bom;
 /// cli interface for the application
 pub(crate) mod cli;
-/// json configuration structures
-pub(crate) mod config;
-/// read cargo log files for dependency information
-pub(crate) mod log;
 /// parse the output of cargo tree
 pub(crate) mod tree;
 

@@ -27,13 +27,13 @@ pub enum Source {
     CratesIo,
 }
 
-pub(crate) struct LicenseInfo {
-    pub(crate) url: &'static str,
-    pub(crate) text: &'static str,
+pub struct LicenseInfo {
+    pub url: &'static str,
+    pub text: &'static str,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) enum License {
+pub enum License {
     Unknown,
     #[serde(rename = "ISC")]
     Isc {
@@ -63,17 +63,17 @@ pub(crate) enum License {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct Package {
+pub struct Package {
     /// id of the allowed package
-    pub(crate) id: String,
+    pub id: String,
     /// Where the package came from
-    pub(crate) source: Source,
+    pub source: Source,
     /// license identification
-    pub(crate) licenses: Vec<License>,
+    pub licenses: Vec<License>,
 }
 
 impl Package {
-    pub(crate) fn url(&self) -> String {
+    pub fn url(&self) -> String {
         match self.source {
             Source::CratesIo => format!("https://crates.io/crates/{}", self.id),
         }
@@ -81,29 +81,29 @@ impl Package {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct VendorPackage {
-    pub(crate) url: String,
+pub struct VendorPackage {
+    pub url: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct Config {
+pub struct Config {
     /// packages that are build-only dependencies, are not linked/distributed, and are ignored in the build log
-    pub(crate) build_only: BTreeSet<String>,
+    pub build_only: BTreeSet<String>,
     /// packages that are licensed by the vendor and are distributed under a custom license
-    pub(crate) vendor: BTreeMap<String, VendorPackage>,
+    pub vendor: BTreeMap<String, VendorPackage>,
     /// 3rd party packages that are allowed to be build dependencies
-    pub(crate) third_party: BTreeMap<String, Package>,
+    pub third_party: BTreeMap<String, Package>,
 }
 
 impl License {
-    pub(crate) fn info(&self) -> LicenseInfo {
+    pub fn info(&self) -> LicenseInfo {
         LicenseInfo {
             url: self.url(),
             text: self.text(),
         }
     }
 
-    pub(crate) fn copyright(&self) -> Option<Vec<String>> {
+    pub fn copyright(&self) -> Option<Vec<String>> {
         match self {
             License::Unknown => None,
             License::Isc { copyright } => Some(copyright.lines()),
@@ -116,20 +116,22 @@ impl License {
         }
     }
 
-    pub(crate) fn text(&self) -> &'static str {
+    pub fn text(&self) -> &'static str {
         match self {
-            License::Isc { .. } => std::include_str!("../licenses/isc.txt"),
-            License::Mit { .. } => std::include_str!("../licenses/mit.txt"),
-            License::OpenSsl => std::include_str!("../licenses/openssl.txt"),
-            License::Bsl1 => std::include_str!("../licenses/bsl.txt"),
-            License::Mpl2 => std::include_str!("../licenses/mpl2.txt"),
-            License::Bsd3 { .. } => std::include_str!("../licenses/bsd3.txt"),
-            License::UnicodeDfs2016 => std::include_str!("../licenses/unicode_dfs_2016.txt"),
+            License::Isc { .. } => std::include_str!("../../bom-tools/licenses/isc.txt"),
+            License::Mit { .. } => std::include_str!("../../bom-tools/licenses/mit.txt"),
+            License::OpenSsl => std::include_str!("../../bom-tools/licenses/openssl.txt"),
+            License::Bsl1 => std::include_str!("../../bom-tools/licenses/bsl.txt"),
+            License::Mpl2 => std::include_str!("../../bom-tools/licenses/mpl2.txt"),
+            License::Bsd3 { .. } => std::include_str!("../../bom-tools/licenses/bsd3.txt"),
+            License::UnicodeDfs2016 => {
+                std::include_str!("../../bom-tools/licenses/unicode_dfs_2016.txt")
+            }
             License::Unknown => panic!("You must define unknown licenses"),
         }
     }
 
-    pub(crate) fn spdx_short(&self) -> &'static str {
+    pub fn spdx_short(&self) -> &'static str {
         match self {
             License::Isc { .. } => "ISC",
             License::Mit { .. } => "MIT",
@@ -144,7 +146,7 @@ impl License {
         }
     }
 
-    pub(crate) fn url(&self) -> &'static str {
+    pub fn url(&self) -> &'static str {
         match self {
             License::Isc { .. } => "https://spdx.org/licenses/ISC.html",
             License::Mit { .. } => "https://spdx.org/licenses/MIT.html",

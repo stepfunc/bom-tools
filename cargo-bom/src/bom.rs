@@ -1,28 +1,28 @@
+use crate::config::Config;
 use crate::log::BuildLog;
-use crate::Config;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub(crate) enum BinaryType {
+pub enum BinaryType {
     Application,
     Library,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct OpenSource {
-    pub(crate) spdx_short: String,
-    pub(crate) copyrights: Option<Vec<String>>,
+pub struct OpenSource {
+    pub spdx_short: String,
+    pub copyrights: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) enum LicenseType {
+pub enum LicenseType {
     Vendor,
     OpenSource(Vec<OpenSource>),
 }
 
 /// The subject of the BOM
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Subject {
+pub struct Subject {
     /// The crate name
     crate_name: String,
     /// url of the subject crate
@@ -33,7 +33,7 @@ pub(crate) struct Subject {
 
 /// A dependency that is linked into the subject binary statically
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Dependency {
+pub struct Dependency {
     /// The crate name
     crate_name: String,
     /// Url for the library
@@ -46,21 +46,21 @@ pub(crate) struct Dependency {
 
 /// Bill of materials
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Bom {
+pub struct Bom {
     /// Time of creation of the BOM
-    pub(crate) timestamp: chrono::DateTime<chrono::Utc>,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
     /// Subject of the BOM
-    pub(crate) subject: Subject,
+    pub subject: Subject,
     /// Dependencies of the subject that are statically linked into it
-    pub(crate) dependencies: Vec<Dependency>,
+    pub dependencies: Vec<Dependency>,
 }
 
-pub(crate) struct SubjectConfig {
-    pub(crate) crate_name: String,
-    pub(crate) url: String,
+pub struct SubjectConfig {
+    pub crate_name: String,
+    pub url: String,
 }
 
-pub(crate) fn create_bom(
+pub fn create_bom(
     subject_config: SubjectConfig,
     mut log: BuildLog,
     config: Config,
