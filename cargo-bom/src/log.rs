@@ -83,6 +83,45 @@ pub struct BuildLog {
 }
 
 impl BuildLog {
+    pub fn read_file(path: &Path) -> Result<Self, Box<dyn Error>> {
+        let mut log = Self::new();
+        log.read(path)?;
+        Ok(log)
+    }
+
+    fn new() -> Self {
+        Self {
+            packages: Default::default(),
+        }
+    }
+
+    fn read(&mut self, path: &Path) -> Result<(), Box<dyn Error>> {
+        let file = std::fs::File::open(path)?;
+
+        let reader = std::io::BufReader::new(file);
+
+        for item in Message::parse_stream(reader) {
+            if let Message::CompilerArtifact(art) = item? {
+                let info = PackageInfo::from_str(&art.package_id.repr)?;
+                match self.packages.get_mut(&info.id) {
+                    None => {
+                        self.packages.insert(info.id.clone(), info.into());
+                    }
+                    Some(existing) => {
+                        if existing.source != info.source {
+                            return Err(error(format!(
+                                "package {} has different sources, {} and {}",
+                                info.id, info.source, existing.source
+                            )));
+                        }
+                        existing.versions.inner.insert(info.version);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn remove_vendor_deps(&mut self, config: &Config) {
         self.packages
             .retain(|id, _| !config.vendor.contains_key(id))
@@ -91,31 +130,4 @@ impl BuildLog {
         self.packages
             .retain(|id, _| !config.build_only.contains(id));
     }
-}
-
-pub fn read_log(path: &Path) -> Result<BuildLog, Box<dyn Error>> {
-    let file = std::fs::File::open(path)?;
-
-    let reader = std::io::BufReader::new(file);
-    let mut packages: BTreeMap<_, PackageUsage> = BTreeMap::new();
-    for item in Message::parse_stream(reader) {
-        if let Message::CompilerArtifact(art) = item? {
-            let info = PackageInfo::from_str(&art.package_id.repr)?;
-            match packages.get_mut(&info.id) {
-                None => {
-                    packages.insert(info.id.clone(), info.into());
-                }
-                Some(existing) => {
-                    if existing.source != info.source {
-                        return Err(error(format!(
-                            "package {} has different sources, {} and {}",
-                            info.id, info.source, existing.source
-                        )));
-                    }
-                    existing.versions.inner.insert(info.version);
-                }
-            }
-        }
-    }
-    Ok(BuildLog { packages })
 }

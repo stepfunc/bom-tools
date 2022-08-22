@@ -3,7 +3,7 @@ use std::io::stdout;
 use std::path::Path;
 
 use cargo_bom::config::{Config, Package, Source};
-use cargo_bom::{bom, log};
+use cargo_bom::log::BuildLog;
 
 use crate::cli::*;
 
@@ -52,7 +52,7 @@ fn print_tree(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn print_log(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(path)?;
+    let log = BuildLog::read_file(path)?;
     for (id, usage) in log.packages {
         println!("{} {}", id, usage.versions)
     }
@@ -64,7 +64,7 @@ fn generate_config(
     tree_path: &Path,
     output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(log_path)?;
+    let log = BuildLog::read_file(log_path)?;
     let tree = tree::parse_tree(File::open(tree_path)?)?;
 
     let mut config = Config {
@@ -101,7 +101,7 @@ fn generate_config(
 }
 
 fn diff_tree(log_path: &Path, tree_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(log_path)?;
+    let log = BuildLog::read_file(log_path)?;
     let tree = tree::parse_tree(File::open(tree_path)?)?;
 
     // first, make sure that everything in tree is in packages
@@ -143,7 +143,8 @@ fn diff_tree(log_path: &Path, tree_path: &Path) -> Result<(), Box<dyn std::error
 }
 
 fn gen_licenses(log_path: &Path, config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    cargo_bom::licenses::gen_licenses(log_path, config_path, stdout())?;
+    let log = BuildLog::read_file(log_path)?;
+    cargo_bom::licenses::gen_licenses(log, config_path, stdout())?;
     Ok(())
 }
 
@@ -153,10 +154,10 @@ fn gen_bom(
     config_path: &Path,
     output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(log_path)?;
+    let log = BuildLog::read_file(log_path)?;
     let config: Config = serde_json::from_reader(File::open(config_path)?)?;
 
-    let bom = bom::create_bom(subject, log, config)?;
+    let bom = cargo_bom::bom::create_bom(subject, log, config)?;
 
     serde_json::to_writer_pretty(
         std::io::BufWriter::new(std::fs::File::create(output_path)?),

@@ -1,18 +1,17 @@
 use crate::config::{Config, LicenseInfo};
+use crate::log::BuildLog;
 use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Generate a license summary file from a build log and configuration file
 pub fn gen_licenses<W>(
-    log_path: &Path,
+    mut log: BuildLog,
     config_path: &Path,
     mut w: W,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     W: std::io::Write,
 {
-    let mut log = crate::log::read_log(log_path)?;
-
     let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
 
     // we don't care about these for license purposes, just the OSS that is linked into the library
