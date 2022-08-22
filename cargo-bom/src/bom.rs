@@ -25,24 +25,24 @@ pub enum LicenseType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Subject {
     /// The crate name
-    crate_name: String,
+    pub crate_name: String,
     /// url of the subject crate
-    url: String,
+    pub url: String,
     /// Version of the library
-    version: semver::Version,
+    pub version: semver::Version,
 }
 
 /// A dependency that is linked into the subject binary statically
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Dependency {
     /// The crate name
-    crate_name: String,
+    pub crate_name: String,
     /// Url for the library
-    url: String,
+    pub url: String,
     /// Versions of the library
-    versions: Vec<semver::Version>,
+    pub versions: Vec<semver::Version>,
     /// license type
-    license: LicenseType,
+    pub license: LicenseType,
 }
 
 /// Bill of materials

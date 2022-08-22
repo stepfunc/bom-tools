@@ -28,11 +28,15 @@ pub enum Source {
     CratesIo,
 }
 
+/// Information about a license
 pub struct LicenseInfo {
+    /// URL of the license
     pub url: &'static str,
+    /// Text of the license
     pub text: &'static str,
 }
 
+/// License type
 #[derive(Serialize, Deserialize, Debug)]
 pub enum License {
     Unknown,
@@ -44,16 +48,16 @@ pub enum License {
     Mit {
         copyright: Copyright,
     },
-    /// Openssl / SSLeay license (https://www.openssl.org/source/license-openssl-ssleay.txt)
+    /// Openssl / SSLeay license - <https://www.openssl.org/source/license-openssl-ssleay.txt>
     #[serde(rename = "OpenSSL")]
     OpenSsl,
-    /// Boost software license v1 (https://www.boost.org/users/license.html)
+    /// Boost software license v1 - <https://www.boost.org/users/license.html>
     #[serde(rename = "BSLv1")]
     Bsl1,
-    /// MPL Version 2.0 (https://www.mozilla.org/en-US/MPL/2.0/)
+    /// MPL Version 2.0 - <https://www.mozilla.org/en-US/MPL/2.0/>
     #[serde(rename = "MPLv2")]
     Mpl2,
-    /// 3-clause BSD (https://opensource.org/licenses/BSD-3-Clause)
+    /// 3-clause BSD  - <https://opensource.org/licenses/BSD-3-Clause>
     #[serde(rename = "BSD3")]
     Bsd3 {
         copyright: Copyright,
