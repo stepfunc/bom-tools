@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
-use cargo_bom::bom::SubjectConfig;
 use cargo_bom::config::{Config, LicenseInfo, Package, Source};
 use cargo_bom::{bom, log};
 
@@ -219,20 +218,7 @@ fn gen_bom(
     output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let log = log::read_log(log_path)?;
-    let mut config: Config = serde_json::from_reader(File::open(config_path)?)?;
-
-    // the subject must be one of the vendor crates
-    let subject_pkg = match config.vendor.remove(&subject) {
-        None => {
-            return Err(format!("subject {} is not in the vendor package list", subject).into())
-        }
-        Some(pkg) => pkg,
-    };
-
-    let subject = SubjectConfig {
-        crate_name: subject.clone(),
-        url: subject_pkg.url,
-    };
+    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
 
     let bom = bom::create_bom(subject, log, config)?;
 

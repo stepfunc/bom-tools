@@ -3,21 +3,30 @@ use serde::{Deserialize, Serialize};
 use crate::config::Config;
 use crate::log::BuildLog;
 
+/// Type of binary
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum BinaryType {
+    /// Binary is an application
     Application,
+    /// Binary is a library
     Library,
 }
 
+/// Information about an open source dependency
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenSource {
+    /// SPDX short abbreviation for the dependency
     pub spdx_short: String,
+    /// Optional copyright lines provided by the author(s)
     pub copyrights: Option<Vec<String>>,
 }
 
+/// Type of license
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LicenseType {
+    /// Customer-specific license governed by a custom license agreement
     Vendor,
+    /// One or more open source licenses
     OpenSource(Vec<OpenSource>),
 }
 
@@ -56,27 +65,32 @@ pub struct Bom {
     pub dependencies: Vec<Dependency>,
 }
 
-pub struct SubjectConfig {
-    pub crate_name: String,
-    pub url: String,
-}
-
+/// Create a BOM from:
+///
+/// * subject_config - configuration for the subject
+/// * log - build log output by cargo
+/// * config - configuration for the package
+///
 pub fn create_bom(
-    subject_config: SubjectConfig,
+    subject_name: String,
     mut log: BuildLog,
-    config: Config,
+    mut config: Config,
 ) -> Result<Bom, Box<dyn std::error::Error>> {
     // we do not care about build-only dependencies in the BOM
     log.remove_build_deps(&config);
 
-    let subject_usage = match log.packages.remove(&subject_config.crate_name) {
+    // the subject must be one of the vendor crates
+    let subject_pkg = match config.vendor.remove(&subject_name) {
         None => {
-            return Err(format!(
-                "Subject crate {} not in build log",
-                subject_config.crate_name
+            return Err(
+                format!("subject {} is not in the vendor package list", subject_name).into(),
             )
-            .into())
         }
+        Some(pkg) => pkg,
+    };
+
+    let subject_usage = match log.packages.remove(&subject_name) {
+        None => return Err(format!("Subject crate {} not in build log", subject_name).into()),
         Some(usage) => usage,
     };
 
@@ -87,7 +101,7 @@ pub fn create_bom(
             None => {
                 return Err(format!(
                     "Subject crate {} does not include a version in build log",
-                    subject_config.crate_name
+                    subject_name
                 )
                 .into())
             }
@@ -95,9 +109,9 @@ pub fn create_bom(
     };
 
     let subject = Subject {
-        crate_name: subject_config.crate_name,
+        crate_name: subject_name.clone(),
         version: subject_version,
-        url: subject_config.url,
+        url: subject_pkg.url,
     };
 
     let mut dependencies = Vec::new();

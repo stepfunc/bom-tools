@@ -67,6 +67,7 @@ pub enum License {
     UnicodeDfs2016,
 }
 
+/// Information about a dependency
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Package {
     /// id of the allowed package
@@ -85,11 +86,14 @@ impl Package {
     }
 }
 
+/// Information about a vendor package
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VendorPackage {
+    /// SCM URL where the package is located
     pub url: String,
 }
 
+/// Represent a configuration file for a particular project
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     /// packages that are build-only dependencies, are not linked/distributed, and are ignored in the build log
@@ -101,6 +105,7 @@ pub struct Config {
 }
 
 impl License {
+    /// Information about the license
     pub fn info(&self) -> LicenseInfo {
         LicenseInfo {
             url: self.url(),
@@ -108,6 +113,7 @@ impl License {
         }
     }
 
+    /// Optional copyright lines provided by the author(s)
     pub fn copyright(&self) -> Option<Vec<String>> {
         match self {
             License::Unknown => None,
@@ -121,6 +127,7 @@ impl License {
         }
     }
 
+    /// The text of the license itself
     pub fn text(&self) -> &'static str {
         match self {
             License::Isc { .. } => std::include_str!("../../bom-tools/licenses/isc.txt"),
@@ -136,6 +143,7 @@ impl License {
         }
     }
 
+    /// SPDX short abbreviation for the license
     pub fn spdx_short(&self) -> &'static str {
         match self {
             License::Isc { .. } => "ISC",
@@ -151,6 +159,7 @@ impl License {
         }
     }
 
+    /// The URL with information about the license
     pub fn url(&self) -> &'static str {
         match self {
             License::Isc { .. } => "https://spdx.org/licenses/ISC.html",
