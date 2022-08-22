@@ -33,6 +33,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             log_path,
             config_path,
         } => gen_licenses(&log_path, &config_path),
+        Commands::GenLicensesDir {
+            dir,
+            file_name,
+            config_path,
+        } => gen_licenses_from_dir(&dir, &file_name, &config_path),
         Commands::GenBom {
             subject_name,
             log_path,
@@ -139,6 +144,16 @@ fn diff_tree(log_path: &Path, tree_path: &Path) -> Result<(), Box<dyn std::error
         }
     }
 
+    Ok(())
+}
+
+fn gen_licenses_from_dir(
+    dir: &Path,
+    file_name: &str,
+    config_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let log = BuildLog::read_files_recursively(dir, file_name)?;
+    cargo_bom::licenses::gen_licenses(log, config_path, stdout())?;
     Ok(())
 }
 

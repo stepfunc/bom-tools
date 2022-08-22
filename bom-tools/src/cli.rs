@@ -52,6 +52,17 @@ pub(crate) enum Commands {
         #[clap(value_parser)]
         config_path: std::path::PathBuf,
     },
+    /// generate a license report by reading a directory recursively
+    GenLicensesDir {
+        /// directory to scan for files matching a name
+        #[clap(value_parser)]
+        dir: std::path::PathBuf,
+        #[clap(value_parser)]
+        file_name: String,
+        /// path to the JSON configuration file
+        #[clap(value_parser)]
+        config_path: std::path::PathBuf,
+    },
     /// writes a bill-of-materials as JSON
     GenBom {
         /// subject of the BOM

@@ -32,7 +32,7 @@ where
 
     writeln!(
         w,
-        "This binary contains open source dependencies under the following licenses:"
+        "This distribution contains open source dependencies under the following licenses:"
     )?;
     writeln!(w)?;
     for (spdx, info) in licenses.iter() {

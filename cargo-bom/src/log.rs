@@ -83,10 +83,33 @@ pub struct BuildLog {
 }
 
 impl BuildLog {
+    /// Read a single build log
     pub fn read_file(path: &Path) -> Result<Self, Box<dyn Error>> {
         let mut log = Self::new();
         log.read(path)?;
         Ok(log)
+    }
+
+    /// Read a single build log
+    pub fn read_files_recursively(dir: &Path, file_name: &str) -> Result<Self, Box<dyn Error>> {
+        let mut log = Self::new();
+        log.read_files_rec(dir, file_name)?;
+        Ok(log)
+    }
+
+    fn read_files_rec(&mut self, dir: &Path, file_name: &str) -> Result<(), Box<dyn Error>> {
+        let entries = std::fs::read_dir(dir)?;
+        for entry in entries {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            if file_type.is_dir() {
+                self.read_files_rec(entry.path().as_path(), file_name)?;
+            }
+            if file_type.is_file() && entry.path().ends_with(file_name) {
+                self.read(entry.path().as_path())?;
+            }
+        }
+        Ok(())
     }
 
     fn new() -> Self {
@@ -108,12 +131,6 @@ impl BuildLog {
                         self.packages.insert(info.id.clone(), info.into());
                     }
                     Some(existing) => {
-                        if existing.source != info.source {
-                            return Err(error(format!(
-                                "package {} has different sources, {} and {}",
-                                info.id, info.source, existing.source
-                            )));
-                        }
                         existing.versions.inner.insert(info.version);
                     }
                 }
