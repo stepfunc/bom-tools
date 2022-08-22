@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::stdout;
 use std::path::Path;
 
-use cargo_bom::config::{Config, LicenseInfo, Package, Source};
+use cargo_bom::config::{Config, Package, Source};
 use cargo_bom::{bom, log};
 
 use crate::cli::*;
@@ -143,71 +143,7 @@ fn diff_tree(log_path: &Path, tree_path: &Path) -> Result<(), Box<dyn std::error
 }
 
 fn gen_licenses(log_path: &Path, config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let mut log = log::read_log(log_path)?;
-    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
-
-    // we don't care about these for license purposes, just the OSS that is linked into the library
-    log.remove_build_deps(&config);
-    log.remove_vendor_deps(&config);
-
-    // first summarize the licenses
-    let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
-    for (id, _) in log.packages.iter() {
-        let pkg = config
-            .third_party
-            .get(id)
-            .ok_or_else(|| format!("3rd party package {} not in the allow list", id))?;
-        for license in pkg.licenses.iter() {
-            licenses.insert(license.spdx_short(), license.info());
-        }
-    }
-
-    println!("This binary contains open source dependencies under the following licenses:");
-    println!();
-    for (spdx, info) in licenses.iter() {
-        println!("  * {}", spdx);
-        println!("      - {}", info.url);
-    }
-    println!();
-    println!("Copies of these licenses are provided at the end of this document. They may also be obtained from the URLs above.");
-    println!();
-
-    for id in log.packages.keys() {
-        let pkg = config
-            .third_party
-            .get(id)
-            .ok_or_else(|| format!("3rd party package {} not in the allow list", id))?;
-        println!("crate: {}", pkg.id);
-        println!("url: {}", pkg.url());
-
-        if pkg.licenses.is_empty() {
-            return Err(format!("No license specified for {}", id).into());
-        }
-
-        let licenses: Vec<String> = pkg
-            .licenses
-            .iter()
-            .map(|x| x.spdx_short().to_string())
-            .collect();
-        println!("licenses: {}", licenses.join(" AND "));
-
-        // write out copyright statements
-        for lic in pkg.licenses.iter() {
-            if let Some(lines) = lic.copyright() {
-                for line in lines {
-                    println!("{}", line);
-                }
-            }
-        }
-
-        println!();
-    }
-
-    for info in licenses.values() {
-        println!("{}", info.text);
-        println!();
-    }
-
+    cargo_bom::licenses::gen_licenses(log_path, config_path, stdout())?;
     Ok(())
 }
 

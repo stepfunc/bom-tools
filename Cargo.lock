@@ -67,6 +67,7 @@ dependencies = [
  "chrono",
  "semver",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
