@@ -57,8 +57,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::Dependency;
     use std::str::FromStr;
+
+    use super::Dependency;
 
     #[test]
     fn parses_line_with_trailing_asterisk() {

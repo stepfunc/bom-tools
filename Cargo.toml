@@ -1,14 +1,6 @@
-[package]
-name = "bom-tools"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-cargo_metadata = "0.15.0"
-chrono = { version = "0.4.22", features = ["serde"] }
-semver = "1.0.13"
-clap = { version = "3.2.16", features = ["derive"] }
-serde = { version = "1.0.143", features = ["derive"] }
-serde_json = "1.0.83"
+members = [
+    "bom-tools",
+    "cargo-bom",
+]

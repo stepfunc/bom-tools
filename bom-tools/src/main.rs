@@ -1,19 +1,14 @@
-use crate::cli::*;
-use crate::config::{Config, LicenseInfo, Package, Source};
-
-use crate::bom::SubjectConfig;
-use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::stdout;
 use std::path::Path;
 
-/// model for a custom bill of materials
-pub(crate) mod bom;
+use cargo_bom::config::{Config, Package, Source};
+use cargo_bom::log::BuildLog;
+
+use crate::cli::*;
+
 /// cli interface for the application
 pub(crate) mod cli;
-/// json configuration structures
-pub(crate) mod config;
-/// read cargo log files for dependency information
-pub(crate) mod log;
 /// parse the output of cargo tree
 pub(crate) mod tree;
 
@@ -38,6 +33,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             log_path,
             config_path,
         } => gen_licenses(&log_path, &config_path),
+        Commands::GenLicensesDir {
+            dir,
+            file_name,
+            config_path,
+        } => gen_licenses_from_dir(&dir, &file_name, &config_path),
         Commands::GenBom {
             subject_name,
             log_path,
@@ -57,7 +57,7 @@ fn print_tree(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn print_log(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(path)?;
+    let log = BuildLog::read_file(path)?;
     for (id, usage) in log.packages {
         println!("{} {}", id, usage.versions)
     }
@@ -69,7 +69,7 @@ fn generate_config(
     tree_path: &Path,
     output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(log_path)?;
+    let log = BuildLog::read_file(log_path)?;
     let tree = tree::parse_tree(File::open(tree_path)?)?;
 
     let mut config = Config {
@@ -106,7 +106,7 @@ fn generate_config(
 }
 
 fn diff_tree(log_path: &Path, tree_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(log_path)?;
+    let log = BuildLog::read_file(log_path)?;
     let tree = tree::parse_tree(File::open(tree_path)?)?;
 
     // first, make sure that everything in tree is in packages
@@ -147,72 +147,19 @@ fn diff_tree(log_path: &Path, tree_path: &Path) -> Result<(), Box<dyn std::error
     Ok(())
 }
 
+fn gen_licenses_from_dir(
+    dir: &Path,
+    file_name: &str,
+    config_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let log = BuildLog::read_files_recursively(dir, file_name)?;
+    cargo_bom::licenses::gen_licenses(log, config_path, stdout())?;
+    Ok(())
+}
+
 fn gen_licenses(log_path: &Path, config_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let mut log = log::read_log(log_path)?;
-    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
-
-    // we don't care about these for license purposes, just the OSS that is linked into the library
-    log.remove_build_deps(&config);
-    log.remove_vendor_deps(&config);
-
-    // first summarize the licenses
-    let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
-    for (id, _) in log.packages.iter() {
-        let pkg = config
-            .third_party
-            .get(id)
-            .ok_or_else(|| format!("3rd party package {} not in the allow list", id))?;
-        for license in pkg.licenses.iter() {
-            licenses.insert(license.spdx_short(), license.info());
-        }
-    }
-
-    println!("This binary contains open source dependencies under the following licenses:");
-    println!();
-    for (spdx, info) in licenses.iter() {
-        println!("  * {}", spdx);
-        println!("      - {}", info.url);
-    }
-    println!();
-    println!("Copies of these licenses are provided at the end of this document. They may also be obtained from the URLs above.");
-    println!();
-
-    for id in log.packages.keys() {
-        let pkg = config
-            .third_party
-            .get(id)
-            .ok_or_else(|| format!("3rd party package {} not in the allow list", id))?;
-        println!("crate: {}", pkg.id);
-        println!("url: {}", pkg.url());
-
-        if pkg.licenses.is_empty() {
-            return Err(format!("No license specified for {}", id).into());
-        }
-
-        let licenses: Vec<String> = pkg
-            .licenses
-            .iter()
-            .map(|x| x.spdx_short().to_string())
-            .collect();
-        println!("licenses: {}", licenses.join(" AND "));
-
-        // write out copyright statements
-        for lic in pkg.licenses.iter() {
-            if let Some(lines) = lic.copyright() {
-                for line in lines {
-                    println!("{}", line);
-                }
-            }
-        }
-
-        println!();
-    }
-
-    for info in licenses.values() {
-        println!("{}", info.text);
-        println!();
-    }
-
+    let log = BuildLog::read_file(log_path)?;
+    cargo_bom::licenses::gen_licenses(log, config_path, stdout())?;
     Ok(())
 }
 
@@ -222,23 +169,10 @@ fn gen_bom(
     config_path: &Path,
     output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let log = log::read_log(log_path)?;
-    let mut config: Config = serde_json::from_reader(File::open(config_path)?)?;
+    let log = BuildLog::read_file(log_path)?;
+    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
 
-    // the subject must be one of the vendor crates
-    let subject_pkg = match config.vendor.remove(&subject) {
-        None => {
-            return Err(format!("subject {} is not in the vendor package list", subject).into())
-        }
-        Some(pkg) => pkg,
-    };
-
-    let subject = SubjectConfig {
-        crate_name: subject.clone(),
-        url: subject_pkg.url,
-    };
-
-    let bom = bom::create_bom(subject, log, config)?;
+    let bom = cargo_bom::bom::create_bom(subject, log, config)?;
 
     serde_json::to_writer_pretty(
         std::io::BufWriter::new(std::fs::File::create(output_path)?),
