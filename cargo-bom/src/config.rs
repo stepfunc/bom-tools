@@ -1,4 +1,7 @@
+use cyclonedx_bom::models::license::{LicenseChoice, LicenseIdentifier};
+use cyclonedx_bom::prelude::{NormalizedString, SpdxExpression, Uri};
 use std::collections::{BTreeMap, BTreeSet};
+use std::error::Error;
 
 use serde::{Deserialize, Serialize};
 
@@ -84,6 +87,32 @@ impl Package {
             Source::CratesIo => format!("https://crates.io/crates/{}", self.id),
         }
     }
+
+    pub fn licenses(&self) -> Result<Vec<LicenseChoice>, Box<dyn Error>> {
+        let mut licenses: Vec<LicenseChoice> = Default::default();
+        for lic in self.licenses.iter() {
+            licenses.push(LicenseChoice::Expression(SpdxExpression::parse_lax(
+                lic.spdx_short().to_string(),
+            )?));
+        }
+        Ok(licenses)
+    }
+
+    pub fn copyright(&self) -> Option<NormalizedString> {
+        let mut lines: Vec<String> = Default::default();
+        for lic in self.licenses.iter() {
+            if let Some(copyrights) = lic.copyrights() {
+                for line in copyrights {
+                    lines.push(line);
+                }
+            }
+        }
+        if lines.is_empty() {
+            None
+        } else {
+            Some(NormalizedString::new(&lines.join("\n")))
+        }
+    }
 }
 
 /// Information about a vendor package
@@ -93,9 +122,34 @@ pub struct VendorPackage {
     pub url: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TargetInfo {
+    pub name: String,
+    pub version: String,
+    pub license_url: String,
+}
+
+impl TargetInfo {
+    pub fn vendor_licenses(&self) -> Result<Vec<LicenseChoice>, Box<dyn Error>> {
+        let licenses = vec![LicenseChoice::License(
+            cyclonedx_bom::models::license::License {
+                license_identifier: LicenseIdentifier::Name(NormalizedString::new(
+                    "Custom non-commercial license",
+                )),
+                text: None,
+                url: Some(Uri::try_from(self.license_url.clone())?),
+            },
+        )];
+
+        Ok(licenses)
+    }
+}
+
 /// Represent a configuration file for a particular project
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
+    /// information about the targets
+    pub targets: BTreeMap<String, TargetInfo>,
     /// packages that are build-only dependencies, are not linked/distributed, and are ignored in the build log
     pub build_only: BTreeSet<String>,
     /// packages that are licensed by the vendor and are distributed under a custom license
@@ -153,6 +207,22 @@ impl License {
             License::Mpl2 => "MPL-2.0",
             License::Bsd3 { .. } => "BSD-3-Clause",
             License::UnicodeDfs2016 => "Unicode-DFS-2016",
+            License::Unknown => {
+                panic!("You must define unknown licenses")
+            }
+        }
+    }
+
+    /// optional lines of copyright associated with the license file
+    pub fn copyrights(&self) -> Option<Vec<String>> {
+        match self {
+            License::Isc { copyright } => Some(copyright.lines()),
+            License::Mit { copyright } => Some(copyright.lines()),
+            License::OpenSsl => None,
+            License::Bsl1 => None,
+            License::Mpl2 => None,
+            License::Bsd3 { copyright } => Some(copyright.lines()),
+            License::UnicodeDfs2016 => None,
             License::Unknown => {
                 panic!("You must define unknown licenses")
             }

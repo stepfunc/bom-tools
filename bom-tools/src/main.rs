@@ -1,3 +1,8 @@
+use cyclonedx_bom::models::component::Classification;
+use cyclonedx_bom::models::license::{License, LicenseChoice, LicenseIdentifier, Licenses};
+use cyclonedx_bom::models::organization::OrganizationalEntity;
+use cyclonedx_bom::prelude::{Component, NormalizedString};
+use semver::Version;
 use std::fs::File;
 use std::io::stdout;
 use std::path::Path;
@@ -42,8 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             subject_name,
             log_path,
             config_path,
-            output_path,
-        } => gen_bom(subject_name, &log_path, &config_path, &output_path),
+        } => gen_bom(&subject_name, &log_path, &config_path),
     }
 }
 
@@ -73,6 +77,7 @@ fn generate_config(
     let tree = tree::parse_tree(File::open(tree_path)?)?;
 
     let mut config = Config {
+        targets: Default::default(),
         build_only: Default::default(),
         vendor: Default::default(),
         third_party: Default::default(),
@@ -163,20 +168,145 @@ fn gen_licenses(log_path: &Path, config_path: &Path) -> Result<(), Box<dyn std::
     Ok(())
 }
 
+fn get_component(
+    name: &str,
+    version: &Version,
+    licenses: Vec<LicenseChoice>,
+    copyright: Option<NormalizedString>,
+) -> Component {
+    use cyclonedx_bom::prelude::*;
+
+    Component {
+        component_type: Classification::Library,
+        mime_type: None,
+        bom_ref: None,
+        supplier: None,
+        author: None,
+        publisher: None,
+        group: None,
+        name: NormalizedString::new(name),
+        version: NormalizedString::new(&version.to_string()),
+        description: None,
+        scope: None,
+        hashes: None,
+        licenses: Some(Licenses(licenses)),
+        copyright,
+        cpe: None,
+        purl: Some(Purl::new("cargo", name, &version.to_string()).unwrap()),
+        swid: None,
+        modified: None,
+        pedigree: None,
+        external_references: None,
+        properties: None,
+        components: None,
+        evidence: None,
+    }
+}
+
 fn gen_bom(
-    subject: String,
+    target: &str,
     log_path: &Path,
     config_path: &Path,
-    output_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let log = BuildLog::read_file(log_path)?;
+    use cyclonedx_bom::prelude::*;
+
+    let mut log = BuildLog::read_file(log_path)?;
     let config: Config = serde_json::from_reader(File::open(config_path)?)?;
 
-    let bom = cargo_bom::bom::create_bom(subject, log, config)?;
+    let target = match config.targets.get(target) {
+        None => return Err(format!("Target not found in config file: {target}").into()),
+        Some(x) => x,
+    };
 
-    serde_json::to_writer_pretty(
-        std::io::BufWriter::new(std::fs::File::create(output_path)?),
-        &bom,
-    )?;
+    log.remove_build_deps(&config);
+    let mut components: Vec<Component> = Default::default();
+    for (name, usage) in log.packages.iter() {
+        if name == &target.name {
+            continue;
+        }
+
+        match config.third_party.get(name) {
+            Some(package) => {
+                for version in usage.versions.values() {
+                    components.push(get_component(
+                        name,
+                        version,
+                        package.licenses()?,
+                        package.copyright(),
+                    ));
+                }
+            }
+            None => match config.vendor.get(name) {
+                None => return Err(format!("Unknown dependency: {name}").into()),
+                Some(_) => {
+                    for version in usage.versions.values() {
+                        components.push(get_component(
+                            name,
+                            version,
+                            target.vendor_licenses()?,
+                            Some(NormalizedString::new("Copyright Step Function I/O LLC")),
+                        ));
+                    }
+                }
+            },
+        }
+    }
+
+    let bom = Bom {
+        version: 1,
+        serial_number: Some(UrnUuid::generate()),
+        metadata: Some(Metadata {
+            timestamp: Some(DateTime::now()?),
+            tools: None,
+            authors: None,
+            component: Some(Component {
+                component_type: Classification::Library,
+                mime_type: None,
+                bom_ref: None,
+                supplier: Some(OrganizationalEntity {
+                    name: Some(NormalizedString::new("Step Function I/O LLC")),
+                    url: Some(vec![Uri::try_from("https://stepfunc.io".to_string())?]),
+                    contact: None,
+                }),
+                author: None,
+                publisher: None,
+                group: Some(NormalizedString::new("io.stepfunc")),
+                name: NormalizedString::new(&target.name),
+                version: NormalizedString::new(&target.version),
+                description: None,
+                scope: None,
+                hashes: None,
+                licenses: Some(Licenses(vec![LicenseChoice::License(License {
+                    license_identifier: LicenseIdentifier::Name(NormalizedString::new(
+                        "Custom non-commercial license",
+                    )),
+                    text: None,
+                    url: Some(Uri::try_from(target.license_url.clone())?),
+                })])),
+                copyright: Some(NormalizedString::new("Step Function I/O LLC")),
+                cpe: None,
+                purl: None,
+                swid: None,
+                modified: None,
+                pedigree: None,
+                external_references: None,
+                properties: None,
+                components: None,
+                evidence: None,
+            }),
+            manufacture: None,
+            supplier: None,
+            licenses: None,
+            properties: None,
+        }),
+        components: Some(Components(components)),
+        services: None,
+        external_references: None,
+        dependencies: None,
+        compositions: None,
+        properties: None,
+    };
+
+    bom.output_as_json_v1_3(&mut std::io::BufWriter::new(std::io::stdout()))?;
     Ok(())
 }

@@ -74,8 +74,5 @@ pub(crate) enum Commands {
         /// path to the JSON configuration file
         #[clap(value_parser)]
         config_path: std::path::PathBuf,
-        /// path to the output JSON bom file
-        #[clap(value_parser)]
-        output_path: std::path::PathBuf,
     },
 }
