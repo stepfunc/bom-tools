@@ -9,16 +9,71 @@ use std::path::Path;
 pub(crate) fn gen_licenses<W>(
     bom_path: &Path,
     config_path: &Path,
+    w: W,
+) -> Result<(), anyhow::Error>
+where
+    W: std::io::Write,
+{
+    let bom = Bom::parse_from_json_v1_4(std::fs::File::open(bom_path)?)?;
+    let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
+
+    let components = extract_deps(bom, &config)?;
+
+    gen_licenses_for(&components, &config, w)?;
+
+    Ok(())
+}
+
+/// Generate a license summary file from a build log and configuration file
+pub(crate) fn gen_licenses_in_dirs<W>(
+    list_dir: &Path,
+    bom_file: &str,
+    config_path: &Path,
+    w: W,
+) -> Result<(), anyhow::Error>
+where
+    W: std::io::Write,
+{
+    let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
+    let mut components = BTreeMap::new();
+
+    for item in std::fs::read_dir(list_dir)? {
+        let item = item?;
+        if item.file_type()?.is_dir() {
+            let bom = Bom::parse_from_json_v1_4(std::fs::File::open(item.path().join(bom_file))?)?;
+            for (name, versions) in extract_deps(bom, &config)? {
+                match components.entry(name.clone()) {
+                    Entry::Vacant(x) => {
+                        x.insert(versions);
+                    }
+                    Entry::Occupied(occ) => {
+                        if occ.get().as_slice() != versions.as_slice() {
+                            return Err(anyhow::Error::msg(format!(
+                                "Version mismatch in {name}: {:?} vs {:?}",
+                                occ.get().as_slice(),
+                                versions.as_slice()
+                            )));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    gen_licenses_for(&components, &config, w)?;
+
+    Ok(())
+}
+
+/// Generate a license summary file from a build log and configuration file
+pub(crate) fn gen_licenses_for<W>(
+    components: &BTreeMap<String, Vec<Version>>,
+    config: &Config,
     mut w: W,
 ) -> Result<(), anyhow::Error>
 where
     W: std::io::Write,
 {
-    let bom = cyclonedx_bom::prelude::Bom::parse_from_json_v1_4(std::fs::File::open(bom_path)?)?;
-    let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
-
-    let components = extract_deps(bom, &config)?;
-
     // first summarize the licenses
     let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
     for (name, _) in components.iter() {

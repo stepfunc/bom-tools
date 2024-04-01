@@ -19,4 +19,16 @@ pub(crate) enum Commands {
         #[clap(value_parser, long, short = 'c')]
         config_path: std::path::PathBuf,
     },
+    /// outputs a human-readable report of all 3rd party licenses
+    GenLicensesDir {
+        /// list all the directories in this directory
+        #[clap(value_parser, long, short = 'l')]
+        list_dir: std::path::PathBuf,
+        /// name of the BOM file in each directory
+        #[clap(value_parser, long, short = 'b')]
+        bom_file: String,
+        /// path to the JSON configuration (allow-list)
+        #[clap(value_parser, long, short = 'c')]
+        config_path: std::path::PathBuf,
+    },
 }

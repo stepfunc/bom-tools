@@ -1,6 +1,5 @@
 use crate::cli::*;
 use std::io::stdout;
-use std::path::Path;
 
 pub(crate) mod cli;
 /// json configuration structures
@@ -16,10 +15,11 @@ fn main() -> Result<(), anyhow::Error> {
         Commands::GenLicenses {
             bom_path,
             config_path,
-        } => gen_licenses(&bom_path, &config_path),
+        } => licenses::gen_licenses(&bom_path, &config_path, stdout()),
+        Commands::GenLicensesDir {
+            list_dir,
+            bom_file,
+            config_path,
+        } => licenses::gen_licenses_in_dirs(&list_dir, &bom_file, &config_path, stdout()),
     }
-}
-
-fn gen_licenses(bom_path: &Path, config_path: &Path) -> Result<(), anyhow::Error> {
-    licenses::gen_licenses(bom_path, config_path, stdout())
 }
