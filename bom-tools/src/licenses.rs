@@ -1,30 +1,32 @@
-use crate::config::{Config, LicenseInfo};
-use crate::log::BuildLog;
+use cargo_bom::config::{Config, LicenseInfo};
 use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Generate a license summary file from a build log and configuration file
-pub fn gen_licenses<W>(
-    mut log: BuildLog,
-    config_path: &Path,
-    mut w: W,
-) -> Result<(), Box<dyn std::error::Error>>
+pub fn gen_licenses<W>(bom_path: &Path, config_path: &Path, mut w: W) -> Result<(), anyhow::Error>
 where
     W: std::io::Write,
 {
+    let bom = cyclonedx_bom::prelude::Bom::parse_from_json_v1_4(std::fs::File::open(bom_path)?)?;
     let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
 
-    // we don't care about these for license purposes, just the OSS that is linked into the library
-    log.remove_build_deps(&config);
-    log.remove_vendor_deps(&config);
+    let components = &bom
+        .components
+        .ok_or_else(|| anyhow::Error::msg("required field 'components' is 'None'"))?
+        .0;
 
     // first summarize the licenses
     let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
-    for (id, _) in log.packages.iter() {
+    for component in components.iter() {
         let pkg = config
             .third_party
-            .get(id)
-            .ok_or_else(|| format!("3rd party package {} not in the allow list", id))?;
+            .get(component.name.as_ref())
+            .ok_or_else(|| {
+                anyhow::Error::msg(format!(
+                    "3rd party package {} not in the allow list",
+                    component.name
+                ))
+            })?;
         for license in pkg.licenses.iter() {
             licenses.insert(license.spdx_short(), license.info());
         }
@@ -43,19 +45,27 @@ where
     writeln!(w, "Copies of these licenses are provided at the end of this document. They may also be obtained from the URLs above.")?;
     writeln!(w)?;
 
-    for (id, usage) in log.packages.iter() {
-        let versions: Vec<String> = usage.versions.values().map(|x| x.to_string()).collect();
+    for component in components.iter() {
+        //let versions: Vec<String> = usage.versions.values().map(|x| x.to_string()).collect();
 
         let pkg = config
             .third_party
-            .get(id)
-            .ok_or_else(|| format!("3rd party package {} not in the allow list", id))?;
+            .get(component.name.as_ref())
+            .ok_or_else(|| {
+                anyhow::Error::msg(format!(
+                    "3rd party package {} not in the allow list",
+                    component.name
+                ))
+            })?;
         writeln!(w, "crate: {}", pkg.id)?;
-        writeln!(w, "version(s): {}", versions.join(", "))?;
+        //writeln!(w, "version(s): {}", versions.join(", "))?;
         writeln!(w, "url: {}", pkg.url())?;
 
         if pkg.licenses.is_empty() {
-            return Err(format!("No license specified for {}", id).into());
+            return Err(anyhow::Error::msg(format!(
+                "No license specified for {}",
+                component.name
+            )));
         }
 
         let licenses: Vec<String> = pkg
