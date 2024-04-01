@@ -3,6 +3,8 @@ use std::io::stdout;
 use std::path::Path;
 
 pub(crate) mod cli;
+/// json configuration structures
+pub mod config;
 pub(crate) mod licenses;
 
 fn main() -> Result<(), anyhow::Error> {

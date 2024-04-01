@@ -130,14 +130,14 @@ impl License {
     /// The text of the license itself
     pub fn text(&self) -> &'static str {
         match self {
-            License::Isc { .. } => std::include_str!("../../bom-tools/licenses/isc.txt"),
-            License::Mit { .. } => std::include_str!("../../bom-tools/licenses/mit.txt"),
-            License::OpenSsl => std::include_str!("../../bom-tools/licenses/openssl.txt"),
-            License::Bsl1 => std::include_str!("../../bom-tools/licenses/bsl.txt"),
-            License::Mpl2 => std::include_str!("../../bom-tools/licenses/mpl2.txt"),
-            License::Bsd3 { .. } => std::include_str!("../../bom-tools/licenses/bsd3.txt"),
+            License::Isc { .. } => std::include_str!("../licenses/isc.txt"),
+            License::Mit { .. } => std::include_str!("../licenses/mit.txt"),
+            License::OpenSsl => std::include_str!("../licenses/openssl.txt"),
+            License::Bsl1 => std::include_str!("../licenses/bsl.txt"),
+            License::Mpl2 => std::include_str!("../licenses/mpl2.txt"),
+            License::Bsd3 { .. } => std::include_str!("../licenses/bsd3.txt"),
             License::UnicodeDfs2016 => {
-                std::include_str!("../../bom-tools/licenses/unicode_dfs_2016.txt")
+                std::include_str!("../licenses/unicode_dfs_2016.txt")
             }
             License::Unknown => panic!("You must define unknown licenses"),
         }
