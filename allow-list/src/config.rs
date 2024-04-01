@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// A copyright statement associated with a license
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Copyright {
+pub(crate) enum Copyright {
     /// Copyright statement is present in the license file that consists of one of more lines
     Lines(Vec<String>),
     /// No copyright statement is present in the license file
@@ -22,23 +22,23 @@ impl Copyright {
 
 /// Where information about the crate can be found
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Source {
+pub(crate) enum Source {
     /// This crate came from crates.io
     #[serde(rename = "crates.io")]
     CratesIo,
 }
 
 /// Information about a license
-pub struct LicenseInfo {
+pub(crate) struct LicenseInfo {
     /// URL of the license
-    pub url: &'static str,
+    pub(crate) url: &'static str,
     /// Text of the license
-    pub text: &'static str,
+    pub(crate) text: &'static str,
 }
 
 /// License type
 #[derive(Serialize, Deserialize, Debug)]
-pub enum License {
+pub(crate) enum License {
     Unknown,
     #[serde(rename = "ISC")]
     Isc {
@@ -69,17 +69,17 @@ pub enum License {
 
 /// Information about a dependency
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Package {
+pub(crate) struct Package {
     /// id of the allowed package
-    pub id: String,
+    pub(crate) id: String,
     /// Where the package came from
-    pub source: Source,
+    pub(crate) source: Source,
     /// license identification
-    pub licenses: Vec<License>,
+    pub(crate) licenses: Vec<License>,
 }
 
 impl Package {
-    pub fn url(&self) -> String {
+    pub(crate) fn url(&self) -> String {
         match self.source {
             Source::CratesIo => format!("https://crates.io/crates/{}", self.id),
         }
@@ -88,25 +88,25 @@ impl Package {
 
 /// Information about a vendor package
 #[derive(Serialize, Deserialize, Debug)]
-pub struct VendorPackage {
+pub(crate) struct VendorPackage {
     /// SCM URL where the package is located
-    pub url: String,
+    pub(crate) url: String,
 }
 
 /// Represent a configuration file for a particular project
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
+pub(crate) struct Config {
     /// packages that are build-only dependencies, are not linked/distributed, and are ignored in the build log
-    pub build_only: BTreeSet<String>,
+    pub(crate) build_only: BTreeSet<String>,
     /// packages that are licensed by the vendor and are distributed under a custom license
-    pub vendor: BTreeMap<String, VendorPackage>,
+    pub(crate) vendor: BTreeMap<String, VendorPackage>,
     /// 3rd party packages that are allowed to be build dependencies
-    pub third_party: BTreeMap<String, Package>,
+    pub(crate) third_party: BTreeMap<String, Package>,
 }
 
 impl License {
     /// Information about the license
-    pub fn info(&self) -> LicenseInfo {
+    pub(crate) fn info(&self) -> LicenseInfo {
         LicenseInfo {
             url: self.url(),
             text: self.text(),
@@ -114,7 +114,7 @@ impl License {
     }
 
     /// Optional copyright lines provided by the author(s)
-    pub fn copyright(&self) -> Option<Vec<String>> {
+    pub(crate) fn copyright(&self) -> Option<Vec<String>> {
         match self {
             License::Unknown => None,
             License::Isc { copyright } => Some(copyright.lines()),
@@ -128,23 +128,23 @@ impl License {
     }
 
     /// The text of the license itself
-    pub fn text(&self) -> &'static str {
+    pub(crate) fn text(&self) -> &'static str {
         match self {
-            License::Isc { .. } => std::include_str!("../../bom-tools/licenses/isc.txt"),
-            License::Mit { .. } => std::include_str!("../../bom-tools/licenses/mit.txt"),
-            License::OpenSsl => std::include_str!("../../bom-tools/licenses/openssl.txt"),
-            License::Bsl1 => std::include_str!("../../bom-tools/licenses/bsl.txt"),
-            License::Mpl2 => std::include_str!("../../bom-tools/licenses/mpl2.txt"),
-            License::Bsd3 { .. } => std::include_str!("../../bom-tools/licenses/bsd3.txt"),
+            License::Isc { .. } => std::include_str!("../licenses/isc.txt"),
+            License::Mit { .. } => std::include_str!("../licenses/mit.txt"),
+            License::OpenSsl => std::include_str!("../licenses/openssl.txt"),
+            License::Bsl1 => std::include_str!("../licenses/bsl.txt"),
+            License::Mpl2 => std::include_str!("../licenses/mpl2.txt"),
+            License::Bsd3 { .. } => std::include_str!("../licenses/bsd3.txt"),
             License::UnicodeDfs2016 => {
-                std::include_str!("../../bom-tools/licenses/unicode_dfs_2016.txt")
+                std::include_str!("../licenses/unicode_dfs_2016.txt")
             }
             License::Unknown => panic!("You must define unknown licenses"),
         }
     }
 
     /// SPDX short abbreviation for the license
-    pub fn spdx_short(&self) -> &'static str {
+    pub(crate) fn spdx_short(&self) -> &'static str {
         match self {
             License::Isc { .. } => "ISC",
             License::Mit { .. } => "MIT",
@@ -160,7 +160,7 @@ impl License {
     }
 
     /// The URL with information about the license
-    pub fn url(&self) -> &'static str {
+    pub(crate) fn url(&self) -> &'static str {
         match self {
             License::Isc { .. } => "https://spdx.org/licenses/ISC.html",
             License::Mit { .. } => "https://spdx.org/licenses/MIT.html",
