@@ -6,7 +6,11 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Generate a license summary file from a build log and configuration file
-pub fn gen_licenses<W>(bom_path: &Path, config_path: &Path, mut w: W) -> Result<(), anyhow::Error>
+pub(crate) fn gen_licenses<W>(
+    bom_path: &Path,
+    config_path: &Path,
+    mut w: W,
+) -> Result<(), anyhow::Error>
 where
     W: std::io::Write,
 {
