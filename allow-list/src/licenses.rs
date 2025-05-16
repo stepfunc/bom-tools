@@ -2,7 +2,7 @@ use crate::config::{Config, LicenseInfo};
 use cyclonedx_bom::prelude::Bom;
 use semver::Version;
 use std::collections::btree_map::Entry;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 /// Generate a license summary file from a build log and configuration file
@@ -35,7 +35,7 @@ where
     W: std::io::Write,
 {
     let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
-    let mut components = BTreeMap::new();
+    let mut components: BTreeMap<String, BTreeSet<Version>> = BTreeMap::new();
 
     for item in std::fs::read_dir(list_dir)? {
         let item = item?;
@@ -44,15 +44,11 @@ where
             for (name, versions) in extract_deps(bom, &config)? {
                 match components.entry(name.clone()) {
                     Entry::Vacant(x) => {
-                        x.insert(versions);
+                        x.insert(versions.into());
                     }
-                    Entry::Occupied(occ) => {
-                        if occ.get().as_slice() != versions.as_slice() {
-                            return Err(anyhow::Error::msg(format!(
-                                "Version mismatch in {name}: {:?} vs {:?}",
-                                occ.get().as_slice(),
-                                versions.as_slice()
-                            )));
+                    Entry::Occupied(mut occ) => {
+                        for version in versions {
+                            occ.get_mut().insert(version);
                         }
                     }
                 }
@@ -67,7 +63,7 @@ where
 
 /// Generate a license summary file from a build log and configuration file
 pub(crate) fn gen_licenses_for<W>(
-    components: &BTreeMap<String, Vec<Version>>,
+    components: &BTreeMap<String, BTreeSet<Version>>,
     config: &Config,
     mut w: W,
 ) -> Result<(), anyhow::Error>
@@ -144,8 +140,8 @@ where
 fn extract_deps(
     bom: Bom,
     config: &Config,
-) -> Result<BTreeMap<String, Vec<Version>>, anyhow::Error> {
-    let mut deps = BTreeMap::new();
+) -> Result<BTreeMap<String, BTreeSet<Version>>, anyhow::Error> {
+    let mut deps: BTreeMap<String, BTreeSet<Version>> = BTreeMap::new();
 
     let components = &bom
         .components
@@ -167,10 +163,10 @@ fn extract_deps(
 
         match deps.entry(component.name.to_string()) {
             Entry::Vacant(x) => {
-                x.insert(vec![version]);
+                x.insert(BTreeSet::from([version]));
             }
-            Entry::Occupied(x) => {
-                x.into_mut().push(version);
+            Entry::Occupied(mut x) => {
+                x.get_mut().insert(version);
             }
         }
     }
