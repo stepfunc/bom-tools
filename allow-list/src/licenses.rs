@@ -3,6 +3,7 @@ use cyclonedx_bom::prelude::Bom;
 use semver::Version;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Deref;
 use std::path::Path;
 
 /// Generate a license summary file from a build log and configuration file
@@ -44,7 +45,7 @@ where
             for (name, versions) in extract_deps(bom, &config)? {
                 match components.entry(name.clone()) {
                     Entry::Vacant(x) => {
-                        x.insert(versions.into());
+                        x.insert(versions);
                     }
                     Entry::Occupied(mut occ) => {
                         for version in versions {
@@ -153,11 +154,11 @@ fn extract_deps(
             anyhow::Error::msg(format!("Missing version in component {}", component.name))
         })?;
         let version = semver::Version::parse(version)?;
-        if config.build_only.contains(component.name.as_ref()) {
+        if config.build_only.contains(component.name.deref()) {
             continue 'deps;
         }
 
-        if config.vendor.contains_key(component.name.as_ref()) {
+        if config.vendor.contains_key(component.name.deref()) {
             continue 'deps;
         }
 
