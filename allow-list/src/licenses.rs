@@ -3,6 +3,8 @@ use cyclonedx_bom::prelude::Bom;
 use semver::Version;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs::{read_dir, File};
+use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
 use anyhow::anyhow;
@@ -34,15 +36,15 @@ pub(crate) fn gen_licenses_in_dirs<W>(
     w: W,
 ) -> Result<(), anyhow::Error>
 where
-    W: std::io::Write,
+    W: Write,
 {
-    let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
+    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
     let mut components: BTreeMap<String, BTreeSet<Version>> = BTreeMap::new();
 
-    for item in std::fs::read_dir(list_dir)? {
+    for item in read_dir(list_dir)? {
         let item = item?;
         if item.file_type()?.is_dir() {
-            let bom = Bom::parse_from_json_v1_4(std::fs::File::open(item.path().join(bom_file))?)?;
+            let bom = Bom::parse_from_json_v1_4(File::open(item.path().join(bom_file))?)?;
             for (name, versions) in extract_deps(bom, &config)? {
                 match components.entry(name.clone()) {
                     Entry::Vacant(x) => {
@@ -112,16 +114,16 @@ where
         let versions: Vec<String> = versions.iter().map(|x| x.to_string()).collect();
 
         let pkg = config.third_party.get(name).ok_or_else(|| {
-            anyhow::Error::msg(format!("3rd party package {name} not in the allow list"))
+            anyhow!("3rd party package {name} not in the allow list")
         })?;
         writeln!(w, "crate: {}", pkg.id)?;
         writeln!(w, "version(s): {}", versions.join(", "))?;
         writeln!(w, "url: {}", pkg.url())?;
 
         if pkg.licenses.is_empty() {
-            return Err(anyhow::Error::msg(format!(
+            return Err(anyhow!(
                 "No license specified for {name}",
-            )));
+            ));
         }
 
         let licenses: Vec<String> = pkg
@@ -159,12 +161,12 @@ fn extract_deps(
 
     let components = &bom
         .components
-        .ok_or_else(|| anyhow::Error::msg("required field 'components' is 'None'"))?
+        .ok_or_else(|| anyhow!("required field 'components' is 'None'"))?
         .0;
 
     'deps: for component in components.iter() {
         let version = component.version.as_ref().ok_or_else(|| {
-            anyhow::Error::msg(format!("Missing version in component {}", component.name))
+            anyhow!("Missing version in component {}", component.name)
         })?;
         let version = semver::Version::parse(version)?;
         if config.build_only.contains(component.name.deref()) {
