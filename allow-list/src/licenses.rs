@@ -1,4 +1,5 @@
 use crate::config::{Config, LicenseInfo};
+use anyhow::anyhow;
 use cyclonedx_bom::prelude::Bom;
 use semver::Version;
 use std::collections::btree_map::Entry;
@@ -7,7 +8,6 @@ use std::fs::{read_dir, File};
 use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
-use anyhow::anyhow;
 
 /// Generate a license summary file from a build log and configuration file
 pub(crate) fn gen_licenses<W>(
@@ -113,17 +113,16 @@ where
     for (name, versions) in components.iter() {
         let versions: Vec<String> = versions.iter().map(|x| x.to_string()).collect();
 
-        let pkg = config.third_party.get(name).ok_or_else(|| {
-            anyhow!("3rd party package {name} not in the allow list")
-        })?;
+        let pkg = config
+            .third_party
+            .get(name)
+            .ok_or_else(|| anyhow!("3rd party package {name} not in the allow list"))?;
         writeln!(w, "crate: {}", pkg.id)?;
         writeln!(w, "version(s): {}", versions.join(", "))?;
         writeln!(w, "url: {}", pkg.url())?;
 
         if pkg.licenses.is_empty() {
-            return Err(anyhow!(
-                "No license specified for {name}",
-            ));
+            return Err(anyhow!("No license specified for {name}",));
         }
 
         let licenses: Vec<String> = pkg
@@ -165,9 +164,10 @@ fn extract_deps(
         .0;
 
     'deps: for component in components.iter() {
-        let version = component.version.as_ref().ok_or_else(|| {
-            anyhow!("Missing version in component {}", component.name)
-        })?;
+        let version = component
+            .version
+            .as_ref()
+            .ok_or_else(|| anyhow!("Missing version in component {}", component.name))?;
         let version = semver::Version::parse(version)?;
         if config.build_only.contains(component.name.deref()) {
             continue 'deps;
