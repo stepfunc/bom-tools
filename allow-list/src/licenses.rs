@@ -6,7 +6,6 @@ use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{read_dir, File};
 use std::io::Write;
-use std::ops::Deref;
 use std::path::Path;
 
 /// Generate a license summary file from a build log and configuration file
@@ -78,10 +77,10 @@ where
     let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
     let mut disallowed = BTreeSet::new();
 
-    for (name, _) in components.iter() {
+    for name in components.keys() {
         match config.third_party.get(name) {
             Some(pkg) => {
-                for license in pkg.licenses.iter() {
+                for license in &pkg.licenses {
                     licenses.insert(license.spdx_short(), license.info());
                 }
             }
@@ -102,7 +101,7 @@ where
         "This distribution contains open source dependencies under the following licenses:"
     )?;
     writeln!(w)?;
-    for (spdx, info) in licenses.iter() {
+    for (spdx, info) in &licenses {
         writeln!(w, "  * {spdx}")?;
         writeln!(w, "      - {}", info.url)?;
     }
@@ -110,8 +109,11 @@ where
     writeln!(w, "Copies of these licenses are provided at the end of this document. They may also be obtained from the URLs above.")?;
     writeln!(w)?;
 
-    for (name, versions) in components.iter() {
-        let versions: Vec<String> = versions.iter().map(|x| x.to_string()).collect();
+    for (name, versions) in components {
+        let versions: Vec<String> = versions
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
 
         let pkg = config
             .third_party
@@ -133,7 +135,7 @@ where
         writeln!(w, "license(s): {}", licenses.join(" AND "))?;
 
         // write out copyright statements
-        for lic in pkg.licenses.iter() {
+        for lic in &pkg.licenses {
             if let Some(lines) = lic.copyright() {
                 for line in lines {
                     writeln!(w, "{line}")?;
@@ -163,17 +165,17 @@ fn extract_deps(
         .ok_or_else(|| anyhow!("required field 'components' is 'None'"))?
         .0;
 
-    'deps: for component in components.iter() {
+    'deps: for component in components {
         let version = component
             .version
             .as_ref()
             .ok_or_else(|| anyhow!("Missing version in component {}", component.name))?;
         let version = semver::Version::parse(version)?;
-        if config.build_only.contains(component.name.deref()) {
+        if config.build_only.contains(&*component.name) {
             continue 'deps;
         }
 
-        if config.vendor.contains_key(component.name.deref()) {
+        if config.vendor.contains_key(&*component.name) {
             continue 'deps;
         }
 

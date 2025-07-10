@@ -14,8 +14,8 @@ pub(crate) enum Copyright {
 impl Copyright {
     fn lines(&self) -> Vec<String> {
         match self {
-            Copyright::Lines(x) => x.clone(),
-            Copyright::NotPresent => vec!["No copyright statement was provided by the author even though they license may refer to it".to_string()],
+            Self::Lines(x) => x.clone(),
+            Self::NotPresent => vec!["No copyright statement was provided by the author even though they license may refer to it".to_string()],
         }
     }
 }
