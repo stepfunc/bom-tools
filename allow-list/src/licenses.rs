@@ -5,6 +5,7 @@ use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::path::Path;
+use anyhow::anyhow;
 
 /// Generate a license summary file from a build log and configuration file
 pub(crate) fn gen_licenses<W>(
@@ -73,13 +74,25 @@ where
 {
     // first summarize the licenses
     let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
+    let mut disallowed = BTreeSet::new();
+
     for (name, _) in components.iter() {
-        let pkg = config.third_party.get(name).ok_or_else(|| {
-            anyhow::Error::msg(format!("3rd party package {name} not in the allow list"))
-        })?;
-        for license in pkg.licenses.iter() {
-            licenses.insert(license.spdx_short(), license.info());
+        match config.third_party.get(name) {
+            Some(pkg) => {
+                for license in pkg.licenses.iter() {
+                    licenses.insert(license.spdx_short(), license.info());
+                }
+            }
+            None => {
+                disallowed.insert(name.to_string());
+            }
         }
+    }
+
+    if !disallowed.is_empty() {
+        return Err(anyhow!(
+            "These 3rd party packages are not in the allow list: {disallowed:?}"
+        ));
     }
 
     writeln!(
@@ -88,7 +101,7 @@ where
     )?;
     writeln!(w)?;
     for (spdx, info) in licenses.iter() {
-        writeln!(w, "  * {}", spdx)?;
+        writeln!(w, "  * {spdx}")?;
         writeln!(w, "      - {}", info.url)?;
     }
     writeln!(w)?;
@@ -122,7 +135,7 @@ where
         for lic in pkg.licenses.iter() {
             if let Some(lines) = lic.copyright() {
                 for line in lines {
-                    writeln!(w, "{}", line)?;
+                    writeln!(w, "{line}")?;
                 }
             }
         }
