@@ -16,10 +16,10 @@ pub(crate) fn gen_licenses<W>(
     w: W,
 ) -> Result<(), anyhow::Error>
 where
-    W: std::io::Write,
+    W: Write,
 {
-    let bom = Bom::parse_from_json_v1_4(std::fs::File::open(bom_path)?)?;
-    let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
+    let bom = Bom::parse_from_json_v1_4(File::open(bom_path)?)?;
+    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
 
     let components = extract_deps(bom, &config)?;
 
@@ -72,7 +72,7 @@ pub(crate) fn gen_licenses_for<W>(
     mut w: W,
 ) -> Result<(), anyhow::Error>
 where
-    W: std::io::Write,
+    W: Write,
 {
     // first summarize the licenses
     let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
