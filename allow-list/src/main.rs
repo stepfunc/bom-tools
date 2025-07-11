@@ -1,4 +1,4 @@
-use crate::cli::*;
+use crate::cli::{Cli, Commands};
 use std::io::stdout;
 
 pub(crate) mod cli;
@@ -9,7 +9,7 @@ pub(crate) mod licenses;
 fn main() -> Result<(), anyhow::Error> {
     use clap::Parser;
 
-    let cli = crate::Cli::parse();
+    let cli = Cli::parse();
 
     match cli.command {
         Commands::GenLicenses {

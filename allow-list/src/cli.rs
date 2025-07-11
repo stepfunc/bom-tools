@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -14,21 +15,21 @@ pub(crate) enum Commands {
     GenLicenses {
         /// path to the cyclonedx JSON
         #[clap(value_parser, long, short = 'b')]
-        bom_path: std::path::PathBuf,
+        bom_path: PathBuf,
         /// path to the JSON configuration (allow-list)
         #[clap(value_parser, long, short = 'c')]
-        config_path: std::path::PathBuf,
+        config_path: PathBuf,
     },
     /// outputs a human-readable report of all 3rd party licenses
     GenLicensesDir {
         /// list all the directories in this directory
         #[clap(value_parser, long, short = 'l')]
-        list_dir: std::path::PathBuf,
+        list_dir: PathBuf,
         /// name of the BOM file in each directory
         #[clap(value_parser, long, short = 'b')]
         bom_file: String,
         /// path to the JSON configuration (allow-list)
         #[clap(value_parser, long, short = 'c')]
-        config_path: std::path::PathBuf,
+        config_path: PathBuf,
     },
 }

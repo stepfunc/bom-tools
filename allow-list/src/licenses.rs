@@ -1,9 +1,11 @@
 use crate::config::{Config, LicenseInfo};
+use anyhow::anyhow;
 use cyclonedx_bom::prelude::Bom;
 use semver::Version;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
-use std::ops::Deref;
+use std::fs::{read_dir, File};
+use std::io::Write;
 use std::path::Path;
 
 /// Generate a license summary file from a build log and configuration file
@@ -13,10 +15,10 @@ pub(crate) fn gen_licenses<W>(
     w: W,
 ) -> Result<(), anyhow::Error>
 where
-    W: std::io::Write,
+    W: Write,
 {
-    let bom = Bom::parse_from_json_v1_4(std::fs::File::open(bom_path)?)?;
-    let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
+    let bom = Bom::parse_from_json_v1_4(File::open(bom_path)?)?;
+    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
 
     let components = extract_deps(bom, &config)?;
 
@@ -33,15 +35,15 @@ pub(crate) fn gen_licenses_in_dirs<W>(
     w: W,
 ) -> Result<(), anyhow::Error>
 where
-    W: std::io::Write,
+    W: Write,
 {
-    let config: Config = serde_json::from_reader(std::fs::File::open(config_path)?)?;
+    let config: Config = serde_json::from_reader(File::open(config_path)?)?;
     let mut components: BTreeMap<String, BTreeSet<Version>> = BTreeMap::new();
 
-    for item in std::fs::read_dir(list_dir)? {
+    for item in read_dir(list_dir)? {
         let item = item?;
         if item.file_type()?.is_dir() {
-            let bom = Bom::parse_from_json_v1_4(std::fs::File::open(item.path().join(bom_file))?)?;
+            let bom = Bom::parse_from_json_v1_4(File::open(item.path().join(bom_file))?)?;
             for (name, versions) in extract_deps(bom, &config)? {
                 match components.entry(name.clone()) {
                     Entry::Vacant(x) => {
@@ -69,17 +71,29 @@ pub(crate) fn gen_licenses_for<W>(
     mut w: W,
 ) -> Result<(), anyhow::Error>
 where
-    W: std::io::Write,
+    W: Write,
 {
     // first summarize the licenses
     let mut licenses: BTreeMap<&'static str, LicenseInfo> = BTreeMap::new();
-    for (name, _) in components.iter() {
-        let pkg = config.third_party.get(name).ok_or_else(|| {
-            anyhow::Error::msg(format!("3rd party package {name} not in the allow list"))
-        })?;
-        for license in pkg.licenses.iter() {
-            licenses.insert(license.spdx_short(), license.info());
+    let mut disallowed = BTreeSet::new();
+
+    for name in components.keys() {
+        match config.third_party.get(name) {
+            Some(pkg) => {
+                for license in &pkg.licenses {
+                    licenses.insert(license.spdx_short(), license.info());
+                }
+            }
+            None => {
+                disallowed.insert(name.to_string());
+            }
         }
+    }
+
+    if !disallowed.is_empty() {
+        return Err(anyhow!(
+            "These 3rd party packages are not in the allow list: {disallowed:?}"
+        ));
     }
 
     writeln!(
@@ -87,28 +101,30 @@ where
         "This distribution contains open source dependencies under the following licenses:"
     )?;
     writeln!(w)?;
-    for (spdx, info) in licenses.iter() {
-        writeln!(w, "  * {}", spdx)?;
+    for (spdx, info) in &licenses {
+        writeln!(w, "  * {spdx}")?;
         writeln!(w, "      - {}", info.url)?;
     }
     writeln!(w)?;
     writeln!(w, "Copies of these licenses are provided at the end of this document. They may also be obtained from the URLs above.")?;
     writeln!(w)?;
 
-    for (name, versions) in components.iter() {
-        let versions: Vec<String> = versions.iter().map(|x| x.to_string()).collect();
+    for (name, versions) in components {
+        let versions: Vec<String> = versions
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
 
-        let pkg = config.third_party.get(name).ok_or_else(|| {
-            anyhow::Error::msg(format!("3rd party package {name} not in the allow list"))
-        })?;
+        let pkg = config
+            .third_party
+            .get(name)
+            .ok_or_else(|| anyhow!("3rd party package {name} not in the allow list"))?;
         writeln!(w, "crate: {}", pkg.id)?;
         writeln!(w, "version(s): {}", versions.join(", "))?;
         writeln!(w, "url: {}", pkg.url())?;
 
         if pkg.licenses.is_empty() {
-            return Err(anyhow::Error::msg(format!(
-                "No license specified for {name}",
-            )));
+            return Err(anyhow!("No license specified for {name}",));
         }
 
         let licenses: Vec<String> = pkg
@@ -119,10 +135,10 @@ where
         writeln!(w, "license(s): {}", licenses.join(" AND "))?;
 
         // write out copyright statements
-        for lic in pkg.licenses.iter() {
+        for lic in &pkg.licenses {
             if let Some(lines) = lic.copyright() {
                 for line in lines {
-                    writeln!(w, "{}", line)?;
+                    writeln!(w, "{line}")?;
                 }
             }
         }
@@ -146,19 +162,20 @@ fn extract_deps(
 
     let components = &bom
         .components
-        .ok_or_else(|| anyhow::Error::msg("required field 'components' is 'None'"))?
+        .ok_or_else(|| anyhow!("required field 'components' is 'None'"))?
         .0;
 
-    'deps: for component in components.iter() {
-        let version = component.version.as_ref().ok_or_else(|| {
-            anyhow::Error::msg(format!("Missing version in component {}", component.name))
-        })?;
+    'deps: for component in components {
+        let version = component
+            .version
+            .as_ref()
+            .ok_or_else(|| anyhow!("Missing version in component {}", component.name))?;
         let version = semver::Version::parse(version)?;
-        if config.build_only.contains(component.name.deref()) {
+        if config.build_only.contains(&*component.name) {
             continue 'deps;
         }
 
-        if config.vendor.contains_key(component.name.deref()) {
+        if config.vendor.contains_key(&*component.name) {
             continue 'deps;
         }
 
