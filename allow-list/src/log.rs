@@ -28,6 +28,15 @@ fn read_log_into(
     let reader = BufReader::new(File::open(path)?);
     for message in Message::parse_stream(reader) {
         if let Message::CompilerArtifact(artifact) = message? {
+            // Skip first-party / path dependencies (workspace-local crates).
+            // Their PackageId embeds an absolute filesystem path that differs
+            // between the build environment (e.g. a `cross` container mounted at
+            // /project) and wherever `cargo metadata` ran, so they can't be
+            // matched by id across environments. They are our own code, not a
+            // third-party license, so they are excluded from the report anyway.
+            if artifact.package_id.repr.starts_with("path+") {
+                continue;
+            }
             // The build log tells us WHICH crates compiled; the metadata gives
             // us their typed name/version. Fail closed if the two are out of sync.
             let package = by_id.get(&artifact.package_id).ok_or_else(|| {

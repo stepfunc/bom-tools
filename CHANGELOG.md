@@ -4,6 +4,18 @@ Notable changes to the `allow-list` tool, newest first. Version numbers mark
 CLI releases (so a consumer can pin a specific build, e.g. `cargo install --tag`);
 they are not a library API compatibility promise.
 
+## [0.2.1] - 2026-07-22
+
+### Fixed
+
+- `gen-licenses-log` / `gen-licenses-log-dir` now skip first-party (path /
+  workspace-local) crates. Their `PackageId` embeds an absolute build path that
+  differs between environments (for example a `cross` container mounted at
+  `/project` versus the host that ran `cargo metadata`), so they could not be
+  matched by id across environments. They are not third-party dependencies, so
+  they are excluded from the report; the fail-closed check still applies to
+  every registry crate.
+
 ## [0.2.0] - 2026-07-22
 
 ### Added
