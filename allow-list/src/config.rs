@@ -28,12 +28,19 @@ pub(crate) enum Source {
     CratesIo,
 }
 
-/// Information about a license
+/// What the tool knows about a supported license
 pub(crate) struct LicenseInfo {
-    /// URL of the license
-    pub(crate) url: &'static str,
-    /// Text of the license
+    /// SPDX identifier
+    pub(crate) spdx: &'static str,
+    /// Full text, appended to the license report
     pub(crate) text: &'static str,
+}
+
+impl LicenseInfo {
+    /// The license's page on spdx.org
+    pub(crate) fn url(&self) -> String {
+        format!("https://spdx.org/licenses/{}.html", self.spdx)
+    }
 }
 
 /// License type
@@ -70,9 +77,9 @@ pub(crate) enum License {
     Apache2,
 }
 
-/// Information about a dependency
+/// An allow-list entry for an open-source package whose license was reviewed
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct Package {
+pub(crate) struct ThirdPartyEntry {
     /// id of the allowed package
     pub(crate) id: String,
     /// Where the package came from
@@ -85,7 +92,7 @@ pub(crate) struct Package {
     pub(crate) embedded: bool,
 }
 
-impl Package {
+impl ThirdPartyEntry {
     pub(crate) fn url(&self) -> String {
         match self.source {
             Source::CratesIo => format!("https://crates.io/crates/{}", self.id),
@@ -93,12 +100,13 @@ impl Package {
     }
 }
 
-/// Information about a vendor package
+/// An allow-list entry for a package the vendor licenses to the customer under its commercial
+/// license
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct VendorPackage {
+pub(crate) struct VendorEntry {
     /// SCM URL where the package is located
     pub(crate) url: String,
-    /// see [`Package::embedded`]
+    /// see [`ThirdPartyEntry::embedded`]
     #[serde(default)]
     pub(crate) embedded: bool,
 }
@@ -117,10 +125,10 @@ pub(crate) struct CommercialLicense {
 pub(crate) struct Config {
     /// packages approved for use at build time only (not linked or distributed); license not reviewed
     pub(crate) build_only: BTreeSet<String>,
-    /// packages that are licensed by the vendor and are distributed under a custom license
-    pub(crate) vendor: BTreeMap<String, VendorPackage>,
-    /// 3rd party packages that are allowed to be build dependencies
-    pub(crate) third_party: BTreeMap<String, Package>,
+    /// packages licensed to the customer by the vendor under its commercial license
+    pub(crate) vendor: BTreeMap<String, VendorEntry>,
+    /// open-source packages whose license was reviewed; approved to ship and to build
+    pub(crate) third_party: BTreeMap<String, ThirdPartyEntry>,
     /// license of first-party and vendor packages, required to generate an SBOM
     #[serde(default)]
     pub(crate) commercial_license: Option<CommercialLicense>,
@@ -135,77 +143,37 @@ impl Config {
 }
 
 impl License {
-    /// Information about the license
-    pub(crate) fn info(&self) -> LicenseInfo {
-        LicenseInfo {
-            url: self.url(),
-            text: self.text(),
-        }
+    /// The license's SPDX id and text, or `None` for `Unknown` (which approval rejects)
+    pub(crate) fn info(&self) -> Option<LicenseInfo> {
+        let (spdx, text) = match self {
+            License::Unknown => return None,
+            License::Isc { .. } => ("ISC", include_str!("../licenses/isc.txt")),
+            License::Mit { .. } => ("MIT", include_str!("../licenses/mit.txt")),
+            License::OpenSsl => ("OpenSSL", include_str!("../licenses/openssl.txt")),
+            License::Bsl1 => ("BSL-1.0", include_str!("../licenses/bsl.txt")),
+            License::Mpl2 => ("MPL-2.0", include_str!("../licenses/mpl2.txt")),
+            License::Bsd3 { .. } => ("BSD-3-Clause", include_str!("../licenses/bsd3.txt")),
+            License::UnicodeDfs2016 => (
+                "Unicode-DFS-2016",
+                include_str!("../licenses/unicode_dfs_2016.txt"),
+            ),
+            License::Apache2 => ("Apache-2.0", include_str!("../licenses/apache2.txt")),
+        };
+        Some(LicenseInfo { spdx, text })
     }
 
-    /// Optional copyright lines provided by the author(s)
+    /// Copyright lines recorded in the review, for licenses that require them
     pub(crate) fn copyright(&self) -> Option<Vec<String>> {
         match self {
-            License::Unknown => None,
-            License::Isc { copyright } => Some(copyright.lines()),
-            License::Mit { copyright } => Some(copyright.lines()),
-            License::OpenSsl => None,
-            License::Bsl1 => None,
-            License::Mpl2 => None,
-            License::Bsd3 { copyright } => Some(copyright.lines()),
-            License::UnicodeDfs2016 => None,
-            License::Apache2 => None,
-        }
-    }
-
-    /// The text of the license itself
-    pub(crate) fn text(&self) -> &'static str {
-        match self {
-            License::Isc { .. } => std::include_str!("../licenses/isc.txt"),
-            License::Mit { .. } => std::include_str!("../licenses/mit.txt"),
-            License::OpenSsl => std::include_str!("../licenses/openssl.txt"),
-            License::Bsl1 => std::include_str!("../licenses/bsl.txt"),
-            License::Mpl2 => std::include_str!("../licenses/mpl2.txt"),
-            License::Bsd3 { .. } => std::include_str!("../licenses/bsd3.txt"),
-            License::UnicodeDfs2016 => {
-                std::include_str!("../licenses/unicode_dfs_2016.txt")
-            }
-            License::Apache2 => std::include_str!("../licenses/apache2.txt"),
-            License::Unknown => panic!("You must define unknown licenses"),
-        }
-    }
-
-    /// SPDX short abbreviation for the license
-    pub(crate) fn spdx_short(&self) -> &'static str {
-        match self {
-            License::Isc { .. } => "ISC",
-            License::Mit { .. } => "MIT",
-            License::OpenSsl => "OpenSSL",
-            License::Bsl1 => "BSL-1.0",
-            License::Mpl2 => "MPL-2.0",
-            License::Bsd3 { .. } => "BSD-3-Clause",
-            License::UnicodeDfs2016 => "Unicode-DFS-2016",
-            License::Apache2 => "Apache-2.0",
-            License::Unknown => {
-                panic!("You must define unknown licenses")
-            }
-        }
-    }
-
-    /// The URL with information about the license
-    pub(crate) fn url(&self) -> &'static str {
-        match self {
-            License::Isc { .. } => "https://spdx.org/licenses/ISC.html",
-            License::Mit { .. } => "https://spdx.org/licenses/MIT.html",
-            License::OpenSsl => "https://spdx.org/licenses/OpenSSL.html",
-            License::Bsl1 => "https://spdx.org/licenses/BSL-1.0.html",
-            License::Mpl2 => "https://spdx.org/licenses/MPL-2.0.html",
-            License::Bsd3 { .. } => "https://spdx.org/licenses/BSD-3-Clause.html",
-            License::UnicodeDfs2016 => "https://spdx.org/licenses/Unicode-DFS-2016.html",
-            License::Apache2 => "https://spdx.org/licenses/Apache-2.0.html",
-            License::Unknown => {
-                panic!("You must define unknown licenses")
-            }
+            License::Isc { copyright }
+            | License::Mit { copyright }
+            | License::Bsd3 { copyright } => Some(copyright.lines()),
+            License::Unknown
+            | License::OpenSsl
+            | License::Bsl1
+            | License::Mpl2
+            | License::UnicodeDfs2016
+            | License::Apache2 => None,
         }
     }
 }

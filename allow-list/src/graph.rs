@@ -57,7 +57,8 @@ impl fmt::Display for PackageKey {
 pub(crate) enum Role {
     /// Only used to build the product (build scripts, proc-macros and their dependencies)
     BuildTime,
-    /// Linked into the product
+    /// Ships in the product: linked into it, or (after the core applies the config's
+    /// `embedded` flag) a build-time dependency whose own code is copied into it
     Runtime,
 }
 

@@ -5,10 +5,10 @@
 //! The expected roles of the `aws` target were derived independently from Cargo's nightly SBOM
 //! precursor file for the same build (`normal`-edge reachability from the root).
 
-use crate::commands::{self, target_dirs, Evidence, SbomOptions};
+use crate::commands::{self, Evidence, SbomOptions};
 use crate::config::Config;
 use crate::graph::Role;
-use crate::input::TargetInput;
+use crate::input::{target_dirs, TargetInput};
 use crate::sbom::{self, Checksums};
 use cargo_metadata::Metadata;
 use cyclonedx_bom::prelude::*;
@@ -194,11 +194,11 @@ fn roles(evidence: &Evidence, config: &Config) -> BTreeMap<String, Role> {
     let metadata: Metadata = load("metadata.json");
     let validated = commands::validate(evidence, &metadata, config).unwrap();
     let mut roles: BTreeMap<String, Role> = validated
-        .components
+        .components()
         .iter()
         .map(|a| (a.component.package.name.clone(), a.component.role))
         .collect();
-    roles.insert(validated.root.name.clone(), Role::Runtime);
+    roles.insert(validated.root().name.clone(), Role::Runtime);
     roles
 }
 
@@ -300,6 +300,18 @@ fn license_report_lists_exactly_the_shipped_third_party_crates() {
     let reported = reported(&one_target("aws"));
     let names: BTreeSet<&str> = reported.iter().map(|(name, _)| name.as_str()).collect();
     assert_eq!(names, expected);
+}
+
+#[test]
+fn license_report_format_is_unchanged() {
+    // consumers ship this file verbatim as third-party-licenses.txt
+    let mut out = Vec::new();
+    commands::gen_licenses(&all_targets(), &mut out).unwrap();
+    let expected = std::fs::read_to_string(fixture("expected-licenses.txt")).unwrap();
+    assert!(
+        String::from_utf8(out).unwrap() == expected,
+        "license report differs from expected-licenses.txt"
+    );
 }
 
 #[test]

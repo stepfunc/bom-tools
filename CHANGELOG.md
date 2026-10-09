@@ -6,8 +6,10 @@ they are not a library API compatibility promise.
 
 ## [0.3.0] - 2026-10-09
 
-Breaking: `gen-licenses-log` and `gen-licenses-log-dir` take new inputs and arguments, and
-their output changes (see below). See the README for how to produce the inputs.
+Breaking: the cargo-cyclonedx commands are removed, and `gen-licenses-log` /
+`gen-licenses-log-dir` take new inputs and arguments and their output changes (see below).
+See the README for how to produce the inputs. Consumers that install from `main` without a
+tag should pin `--tag 0.2.1` until they migrate.
 
 ### Added
 
@@ -39,9 +41,12 @@ their output changes (see below). See the README for how to produce the inputs.
   (proc-macros and their dependencies, build-script dependencies) are no longer listed, and
   first-party crates are matched by name and version instead of being skipped.
 
-### Deprecated
+### Removed
 
-- `gen-licenses` / `gen-licenses-dir` (cargo-cyclonedx input). Their output is unchanged.
+- `gen-licenses` / `gen-licenses-dir`. They read `cargo cyclonedx` SBOMs, which describe the
+  dependency graph for cargo-cyclonedx's own feature selection rather than the features the
+  product was built with (e.g. dnp3 1.7.0's report listed `ring` and omitted `aws-lc-*` for
+  targets built with `tls-aws-lc`).
 
 ## [0.2.1] - 2026-07-22
 

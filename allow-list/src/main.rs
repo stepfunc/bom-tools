@@ -18,6 +18,7 @@ pub(crate) mod graph;
 pub(crate) mod input;
 /// merge per-target graphs and resolve them against the cargo metadata
 pub(crate) mod inventory;
+/// license report renderer
 pub(crate) mod licenses;
 /// CycloneDX SBOM renderer
 pub(crate) mod sbom;
@@ -28,15 +29,6 @@ fn main() -> Result<(), anyhow::Error> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::GenLicenses {
-            bom_path,
-            config_path,
-        } => licenses::gen_licenses(&bom_path, &config_path, stdout()),
-        Commands::GenLicensesDir {
-            list_dir,
-            bom_file,
-            config_path,
-        } => licenses::gen_licenses_in_dirs(&list_dir, &bom_file, &config_path, stdout()),
         Commands::GenLicensesLog { target, common } => {
             commands::gen_licenses(&target.evidence(common), stdout())
         }

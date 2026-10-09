@@ -1,5 +1,5 @@
-use crate::commands::{target_dirs, Evidence, SbomOptions};
-use crate::input::TargetInput;
+use crate::commands::{Evidence, SbomOptions};
+use crate::input::{target_dirs, TargetInput};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -15,29 +15,6 @@ pub(crate) struct Cli {
 #[allow(clippy::enum_variant_names)]
 #[derive(Subcommand)]
 pub(crate) enum Commands {
-    /// outputs a human-readable report of all 3rd party licenses
-    /// (deprecated: reads a cargo-cyclonedx SBOM, which does not reflect the features actually built)
-    GenLicenses {
-        /// path to the cyclonedx JSON
-        #[clap(value_parser, long, short = 'b')]
-        bom_path: PathBuf,
-        /// path to the JSON configuration (allow-list)
-        #[clap(value_parser, long, short = 'c')]
-        config_path: PathBuf,
-    },
-    /// outputs a human-readable report of all 3rd party licenses
-    /// (deprecated: reads cargo-cyclonedx SBOMs, which do not reflect the features actually built)
-    GenLicensesDir {
-        /// list all the directories in this directory
-        #[clap(value_parser, long, short = 'l')]
-        list_dir: PathBuf,
-        /// name of the BOM file in each directory
-        #[clap(value_parser, long, short = 'b')]
-        bom_file: String,
-        /// path to the JSON configuration (allow-list)
-        #[clap(value_parser, long, short = 'c')]
-        config_path: PathBuf,
-    },
     /// outputs a human-readable report of the 3rd party licenses that ship in the product,
     /// from the build evidence of one target
     GenLicensesLog {

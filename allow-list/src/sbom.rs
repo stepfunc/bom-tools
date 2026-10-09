@@ -91,9 +91,9 @@ pub(crate) fn write<W: Write>(
     };
 
     // every package is referenced by its purl, which must therefore be unique
-    let root = validated.root;
+    let root = validated.root();
     let packages =
-        std::iter::once(root).chain(validated.components.iter().map(|a| a.component.package));
+        std::iter::once(root).chain(validated.components().iter().map(|a| a.component.package));
     let mut purls: HashMap<&PackageId, Purl> = HashMap::new();
     let mut refs: HashMap<&PackageId, String> = HashMap::new();
     let mut unique = HashSet::new();
@@ -122,7 +122,7 @@ pub(crate) fn write<W: Write>(
     root_component.licenses = Some(commercial());
 
     let mut components = Vec::new();
-    for approved in &validated.components {
+    for approved in validated.components() {
         let package = approved.component.package;
         let mut component = component(package);
         component.scope = Some(match approved.component.role {
@@ -165,7 +165,7 @@ pub(crate) fn write<W: Write>(
 
     let mut dependencies: BTreeMap<&str, Vec<&str>> =
         refs.values().map(|r| (r.as_str(), Vec::new())).collect();
-    for (from, to) in &validated.edges {
+    for (from, to) in validated.edges() {
         if let Some(list) = dependencies.get_mut(refs[from].as_str()) {
             list.push(refs[to].as_str());
         }

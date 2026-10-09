@@ -76,10 +76,6 @@ allow-list gen-sbom-log-dir -l evidence --root-package dnp3-ffi -m metadata.json
 - `--omit-serial-number`: with `SOURCE_DATE_EPOCH` (used as the timestamp), output is
   byte-for-byte reproducible.
 
-`gen-licenses` / `gen-licenses-dir` read `cargo cyclonedx` SBOMs. They are **deprecated**:
-`cargo cyclonedx` describes the dependency graph for its own feature selection, not the
-features the product was built with.
-
 ## `allowed.json`
 
 ```jsonc
@@ -99,9 +95,8 @@ features the product was built with.
 }
 ```
 
-Rules, checked by the build-evidence commands (`gen-licenses-log*`, `gen-sbom-log*`; all
-violations are reported together). Workspace members are our own code and need no entry; the
-root package must be one.
+Rules, checked on every run (all violations are reported together). Workspace members are
+our own code and need no entry; the root package must be one.
 
 - every compiled package outside the workspace is in **exactly one** list;
 - a runtime package outside the workspace must be in `third_party` or `vendor`; a `build_only`

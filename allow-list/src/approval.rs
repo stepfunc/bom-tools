@@ -3,7 +3,7 @@
 //! The inventory decides what each package is and how it is used; the configuration must
 //! approve exactly that. Every violation is collected and reported at once.
 
-use crate::config::{Config, License, Package as ApprovedPackage, VendorPackage};
+use crate::config::{Config, License, ThirdPartyEntry, VendorEntry};
 use crate::graph::Role;
 use crate::inventory::{Component, DeclaredLicense, Inventory};
 use anyhow::anyhow;
@@ -13,14 +13,14 @@ use spdx::LicenseReq;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// How a component is approved
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Approval<'c> {
     /// A workspace member: our own code
     FirstParty,
     /// An open-source package whose license was reviewed
-    ThirdParty(&'c ApprovedPackage),
+    ThirdParty(&'c ThirdPartyEntry),
     /// A package the vendor licenses to the customer under its commercial license
-    Vendor(&'c VendorPackage),
+    Vendor(&'c VendorEntry),
     /// A package approved for use at build time only
     BuildOnly,
 }
@@ -32,28 +32,48 @@ pub(crate) struct Approved<'m, 'c> {
     pub(crate) approval: Approval<'c>,
 }
 
-/// An inventory in which every component is approved for the way it is used
+/// An inventory in which every component is approved for the way it is used.
+///
+/// Only [`validate`] constructs one, so renderers can rely on every component being approved.
 #[derive(Debug)]
 pub(crate) struct ValidatedInventory<'m, 'c> {
-    pub(crate) root: &'m Package,
-    pub(crate) components: Vec<Approved<'m, 'c>>,
-    pub(crate) edges: BTreeSet<(&'m PackageId, &'m PackageId)>,
+    root: &'m Package,
+    components: Vec<Approved<'m, 'c>>,
+    edges: BTreeSet<(&'m PackageId, &'m PackageId)>,
 }
 
-impl ValidatedInventory<'_, '_> {
-    /// The open-source packages that ship in the product, for the license report:
-    /// runtime components approved as `third_party`, by name with all their versions
-    pub(crate) fn shipped_third_party(&self) -> BTreeMap<String, BTreeSet<Version>> {
-        let mut shipped: BTreeMap<String, BTreeSet<Version>> = BTreeMap::new();
+impl<'m, 'c> ValidatedInventory<'m, 'c> {
+    /// The product itself (a workspace member)
+    pub(crate) fn root(&self) -> &'m Package {
+        self.root
+    }
+
+    /// Every other package, sorted by name, version and id
+    pub(crate) fn components(&self) -> &[Approved<'m, 'c>] {
+        &self.components
+    }
+
+    /// Package-level dependency edges, including those from the root
+    pub(crate) fn edges(&self) -> &BTreeSet<(&'m PackageId, &'m PackageId)> {
+        &self.edges
+    }
+
+    /// The open-source packages that ship in the product (runtime components approved as
+    /// `third_party`), by name, with their reviewed entry and every shipped version
+    pub(crate) fn shipped_third_party(
+        &self,
+    ) -> BTreeMap<&'m str, (&'c ThirdPartyEntry, BTreeSet<&'m Version>)> {
+        let mut shipped: BTreeMap<&str, (&ThirdPartyEntry, BTreeSet<&Version>)> = BTreeMap::new();
         for approved in &self.components {
-            if approved.component.role == Role::Runtime
-                && matches!(approved.approval, Approval::ThirdParty(_))
+            if let (Approval::ThirdParty(entry), Role::Runtime) =
+                (approved.approval, approved.component.role)
             {
                 let package = approved.component.package;
                 shipped
-                    .entry(package.name.clone())
-                    .or_default()
-                    .insert(package.version.clone());
+                    .entry(package.name.as_str())
+                    .or_insert_with(|| (entry, BTreeSet::new()))
+                    .1
+                    .insert(&package.version);
             }
         }
         shipped
@@ -143,7 +163,7 @@ fn approve<'c>(component: &Component, config: &'c Config) -> Result<Approval<'c>
 }
 
 /// A `third_party` entry must be well formed, however the package is used
-fn check_entry(name: &str, approved: &ApprovedPackage) -> Result<(), String> {
+fn check_entry(name: &str, approved: &ThirdPartyEntry) -> Result<(), String> {
     if approved.id != name {
         return Err(format!(
             "`third_party` entry is keyed `{name}` but has id `{}`",
@@ -153,11 +173,7 @@ fn check_entry(name: &str, approved: &ApprovedPackage) -> Result<(), String> {
     if approved.licenses.is_empty() {
         return Err("`third_party` entry has no licenses".to_string());
     }
-    if approved
-        .licenses
-        .iter()
-        .any(|l| matches!(l, License::Unknown))
-    {
+    if approved.licenses.iter().any(|l| l.info().is_none()) {
         return Err("`third_party` entry has an `Unknown` license".to_string());
     }
     Ok(())
@@ -166,7 +182,7 @@ fn check_entry(name: &str, approved: &ApprovedPackage) -> Result<(), String> {
 /// The reviewed licenses must still be part of the declared expression (no stale extras) and
 /// must satisfy it (no newly mandatory licenses)
 fn check_reviewed_license(
-    approved: &ApprovedPackage,
+    approved: &ThirdPartyEntry,
     declared: &DeclaredLicense,
 ) -> Result<(), String> {
     let expression = match declared {
@@ -182,10 +198,11 @@ fn check_reviewed_license(
     let reviewed: Vec<LicenseReq> = approved
         .licenses
         .iter()
-        .map(|l| {
-            spdx::license_id(l.spdx_short())
+        .filter_map(License::info)
+        .map(|info| {
+            spdx::license_id(info.spdx)
                 .map(LicenseReq::from)
-                .ok_or_else(|| format!("reviewed license {} is not an SPDX id", l.spdx_short()))
+                .ok_or_else(|| format!("reviewed license {} is not an SPDX id", info.spdx))
         })
         .collect::<Result<_, _>>()?;
     let reviewed_names = || {
@@ -371,7 +388,7 @@ mod tests {
         json["third_party"]["regex"] = mit("regex");
         let config = config(json);
         let validated = validate(inventory, &config).unwrap();
-        let shipped: Vec<String> = validated.shipped_third_party().into_keys().collect();
+        let shipped: Vec<&str> = validated.shipped_third_party().into_keys().collect();
         assert_eq!(shipped, ["serde"]);
     }
 }

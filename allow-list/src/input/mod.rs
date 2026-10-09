@@ -42,7 +42,8 @@ impl Variant {
 #[derive(Debug, Clone)]
 pub(crate) enum TargetInput {
     /// A `cargo build --message-format json` log plus the full (`-e normal,build`) and runtime
-    /// (`-e normal,no-proc-macro`) `cargo tree` outputs from the same invocation
+    /// (`-e normal,no-proc-macro`) `cargo tree` outputs, run with the same arguments in the
+    /// build's environment
     LogAndTree {
         log: PathBuf,
         tree: PathBuf,
@@ -56,6 +57,23 @@ impl std::fmt::Display for TargetInput {
             Self::LogAndTree { log, .. } => write!(f, "{}", log.display()),
         }
     }
+}
+
+/// The evidence of every target: one per immediate subdirectory of `dir`, in sorted order,
+/// each holding the standard file names
+pub(crate) fn target_dirs(dir: &Path) -> Result<Vec<TargetInput>, anyhow::Error> {
+    let mut dirs = Vec::new();
+    for entry in std::fs::read_dir(dir).with_context(|| format!("listing {}", dir.display()))? {
+        let path = entry?.path();
+        if path.is_dir() {
+            dirs.push(path);
+        }
+    }
+    if dirs.is_empty() {
+        return Err(anyhow!("{} has no target subdirectories", dir.display()));
+    }
+    dirs.sort();
+    Ok(dirs.iter().map(|d| TargetInput::from_dir(d)).collect())
 }
 
 impl TargetInput {

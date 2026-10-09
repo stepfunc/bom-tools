@@ -9,7 +9,7 @@ use anyhow::{anyhow, Context};
 use cargo_metadata::Metadata;
 use cyclonedx_bom::prelude::DateTime;
 use serde::de::DeserializeOwned;
-use std::fs::{read_dir, File};
+use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 use time::format_description::well_known::Rfc3339;
@@ -27,28 +27,12 @@ pub(crate) struct Evidence {
     pub(crate) config: PathBuf,
 }
 
-/// One target per immediate subdirectory of `dir`, in sorted order
-pub(crate) fn target_dirs(dir: &Path) -> Result<Vec<TargetInput>, anyhow::Error> {
-    let mut dirs = Vec::new();
-    for entry in read_dir(dir).with_context(|| format!("listing {}", dir.display()))? {
-        let path = entry?.path();
-        if path.is_dir() {
-            dirs.push(path);
-        }
-    }
-    if dirs.is_empty() {
-        return Err(anyhow!("{} has no target subdirectories", dir.display()));
-    }
-    dirs.sort();
-    Ok(dirs.iter().map(|d| TargetInput::from_dir(d)).collect())
-}
-
 /// Write the human-readable report of the open-source licenses that ship in the product
 pub(crate) fn gen_licenses<W: Write>(evidence: &Evidence, w: W) -> Result<(), anyhow::Error> {
     let config: Config = load_json(&evidence.config)?;
     let metadata: Metadata = load_json(&evidence.metadata)?;
     let validated = validate(evidence, &metadata, &config)?;
-    licenses::gen_licenses_for(&validated.shipped_third_party(), &config, w)
+    licenses::write(&validated, w)
 }
 
 /// Options of the SBOM commands
