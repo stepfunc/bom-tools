@@ -458,8 +458,28 @@ fn sbom_is_reproducible() {
 
 #[test]
 fn sbom_command_uses_the_given_lockfile() {
-    // a lockfile without crates.io checksums (the path-only fixture workspace's) must be
-    // rejected, which proves the command passes `--lockfile` through to the renderer
+    // the command takes every hash from the lockfile it is given
+    let options = SbomOptions {
+        lockfile: fixture("Cargo.lock"),
+        omit_serial_number: false,
+    };
+    let mut out = Vec::new();
+    commands::gen_sbom(&all_targets(), &options, &mut out).unwrap();
+    let bom: serde_json::Value = serde_json::from_slice(&out).unwrap();
+    let serde = bom["components"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "serde")
+        .unwrap();
+    let lock = std::fs::read_to_string(fixture("Cargo.lock")).unwrap();
+    let hash = serde["hashes"][0]["content"].as_str().unwrap();
+    assert!(lock.contains(&format!(
+        "name = \"serde\"\nversion = \"{}\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"{hash}\"",
+        serde["version"].as_str().unwrap()
+    )));
+
+    // and a lockfile without crates.io checksums (the path-only fixture workspace's) fails
     let options = SbomOptions {
         lockfile: Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/workspace/Cargo.lock"),
         omit_serial_number: false,
