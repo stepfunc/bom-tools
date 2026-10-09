@@ -42,10 +42,17 @@ cargo tree $ARGS -e normal,build         $TREE_FMT > evidence/$TARGET/tree.txt
 cargo tree $ARGS -e normal,no-proc-macro $TREE_FMT > evidence/$TARGET/runtime-tree.txt
 ```
 
+Always pass `--target`, even for a native build: without it `cargo tree` does not separate
+host and target features, so a dependency that builds with different features for a build
+script and for the product (e.g. `tracing-core` in dnp3) makes the cross-check fail.
+
 Use `cross build` instead of `cargo build` for cross builds; the trees can run on the runner
 when its host triple equals the container's. The trees must come from the build's host:
 build dependencies are resolved for the host, so a tree produced on a Linux packaging runner
 does not describe a build that ran on Windows.
+
+A complete example of the recipe in CI, including Windows, macOS and `cross`, is dnp3's
+[`build-evidence.sh`](https://github.com/stepfunc/dnp3/blob/main/.github/scripts/build-evidence.sh).
 
 Once, anywhere, from the same checkout:
 
