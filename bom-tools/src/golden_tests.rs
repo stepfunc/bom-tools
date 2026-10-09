@@ -330,7 +330,7 @@ fn sbom_bytes() -> Vec<u8> {
     let checksums =
         Checksums::from_lockfile(&std::fs::read_to_string(fixture("Cargo.lock")).unwrap()).unwrap();
     let options = sbom::Options {
-        checksums: Some(&checksums),
+        checksums: &checksums,
         omit_serial_number: true,
         timestamp: DateTime::try_from("2025-10-09T08:53:20Z".to_string()).unwrap(),
     };
@@ -461,9 +461,7 @@ fn sbom_command_uses_the_given_lockfile() {
     // a lockfile without crates.io checksums (the path-only fixture workspace's) must be
     // rejected, which proves the command passes `--lockfile` through to the renderer
     let options = SbomOptions {
-        lockfile: Some(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/workspace/Cargo.lock"),
-        ),
+        lockfile: Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/workspace/Cargo.lock"),
         omit_serial_number: false,
     };
     let err = commands::gen_sbom(&all_targets(), &options, &mut Vec::new()).unwrap_err();

@@ -59,9 +59,9 @@ impl EvidenceArgs {
 /// Options of the SBOM command
 #[derive(Args)]
 pub(crate) struct SbomArgs {
-    /// path to the `Cargo.lock`, to add SHA-256 hashes of crates.io packages
+    /// path to the build's `Cargo.lock`, for the SHA-256 hashes of crates.io packages
     #[clap(value_parser, long)]
-    lockfile: Option<PathBuf>,
+    lockfile: PathBuf,
     /// omit the random serial number, for reproducible output (with `SOURCE_DATE_EPOCH`)
     #[clap(long)]
     omit_serial_number: bool,

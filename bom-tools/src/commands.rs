@@ -37,8 +37,8 @@ pub(crate) fn gen_licenses<W: Write>(evidence: &Evidence, w: W) -> Result<(), an
 
 /// Options of the SBOM command
 pub(crate) struct SbomOptions {
-    /// `Cargo.lock` from which to take SHA-256 hashes of crates.io packages
-    pub(crate) lockfile: Option<PathBuf>,
+    /// The build's `Cargo.lock`, for the SHA-256 hashes of crates.io packages
+    pub(crate) lockfile: PathBuf,
     /// Omit the random serial number, for reproducible output
     pub(crate) omit_serial_number: bool,
 }
@@ -52,15 +52,13 @@ pub(crate) fn gen_sbom<W: Write>(
     let config: Config = load_json(&evidence.config)?;
     let metadata: Metadata = load_json(&evidence.metadata)?;
     let validated = validate(evidence, &metadata, &config)?;
-    let checksums = match &options.lockfile {
-        Some(path) => Some(
-            Checksums::from_lockfile(&std::fs::read_to_string(path)?)
-                .with_context(|| format!("parsing {}", path.display()))?,
-        ),
-        None => None,
-    };
+    let lockfile = &options.lockfile;
+    let checksums = std::fs::read_to_string(lockfile)
+        .map_err(anyhow::Error::from)
+        .and_then(|text| Checksums::from_lockfile(&text))
+        .with_context(|| format!("reading {}", lockfile.display()))?;
     let options = sbom::Options {
-        checksums: checksums.as_ref(),
+        checksums: &checksums,
         omit_serial_number: options.omit_serial_number,
         timestamp: timestamp()?,
     };

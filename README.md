@@ -70,7 +70,8 @@ bom-tools sbom -e evidence --root-package dnp3-ffi -m metadata.json -c allowed.j
 
 `sbom` also takes:
 
-- `--lockfile <Cargo.lock>`: add each crates.io package's SHA-256 (the `.crate` archive hash);
+- `--lockfile <Cargo.lock>` (required): the build's lockfile, for each crates.io package's
+  SHA-256 (the `.crate` archive hash Cargo verified when downloading it);
 - `--omit-serial-number`: with `SOURCE_DATE_EPOCH` (used as the timestamp), output is
   byte-for-byte reproducible.
 

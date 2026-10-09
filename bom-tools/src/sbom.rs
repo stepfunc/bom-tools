@@ -66,8 +66,8 @@ impl Checksums {
 
 /// How to produce the document
 pub(crate) struct Options<'a> {
-    /// Add SHA-256 hashes of crates.io packages from this lockfile
-    pub(crate) checksums: Option<&'a Checksums>,
+    /// SHA-256 hashes of crates.io packages, from the build's lockfile
+    pub(crate) checksums: &'a Checksums,
     /// Omit the random serial number, for reproducible output
     pub(crate) omit_serial_number: bool,
     /// The document's creation time
@@ -147,8 +147,8 @@ pub(crate) fn write<W: Write>(
             )]));
         }
         // only crates.io packages reach here besides first-party ones (see `inventory`)
-        if let (Some(checksums), false) = (options.checksums, approved.component.first_party) {
-            let checksum = checksums.get(package).ok_or_else(|| {
+        if !approved.component.first_party {
+            let checksum = options.checksums.get(package).ok_or_else(|| {
                 anyhow!(
                     "the lockfile has no checksum for {} {}",
                     package.name,
@@ -259,17 +259,27 @@ mod tests {
             .collect()
     }
 
-    /// Render the SBOM of `app` with the given dependencies, all directly under the root
+    /// Render the SBOM of `app` with the given dependencies, all directly under the root, and a
+    /// lockfile entry (hash `HASH_A`) for each crates.io dependency
     fn render(
         deps: &[(PackageKey, Option<&str>, Role)],
-        checksums: Option<&Checksums>,
     ) -> Result<serde_json::Value, anyhow::Error> {
-        render_with(deps, checksums, &config())
+        let entries: Vec<(&str, String, &str)> = deps
+            .iter()
+            .filter(|(k, _, _)| k.source == crate::graph::SourceKind::CratesIo)
+            .map(|(k, _, _)| (k.name.as_str(), k.version.to_string(), HASH_A))
+            .collect();
+        let entries: Vec<(&str, &str, &str)> = entries
+            .iter()
+            .map(|(n, v, h)| (*n, v.as_str(), *h))
+            .collect();
+        let checksums = Checksums::from_lockfile(&lockfile(&entries)).unwrap();
+        render_with(deps, &checksums, &config())
     }
 
     fn render_with(
         deps: &[(PackageKey, Option<&str>, Role)],
-        checksums: Option<&Checksums>,
+        checksums: &Checksums,
         config: &Config,
     ) -> Result<serde_json::Value, anyhow::Error> {
         let (meta, graph) = app_with(deps);
@@ -305,14 +315,11 @@ mod tests {
 
     #[test]
     fn encodes_scope_license_and_references_per_approval() {
-        let bom = render(
-            &[
-                (key("serde", "1.0.0"), Some("MIT/Apache-2.0"), Role::Runtime),
-                (key("cc", "1.0.0"), None, Role::BuildTime),
-                (key("sfio", "1.0.0"), None, Role::Runtime),
-            ],
-            None,
-        )
+        let bom = render(&[
+            (key("serde", "1.0.0"), Some("MIT/Apache-2.0"), Role::Runtime),
+            (key("cc", "1.0.0"), None, Role::BuildTime),
+            (key("sfio", "1.0.0"), None, Role::Runtime),
+        ])
         .unwrap();
         let serde = component(&bom, "serde", "1.0.0");
         assert_eq!(serde["scope"], "required");
@@ -351,12 +358,13 @@ mod tests {
             ("serde", "2.0.0", HASH_B),
         ]))
         .unwrap();
-        let bom = render(
+        let bom = render_with(
             &[
                 (key("serde", "1.0.0"), Some("MIT"), Role::Runtime),
                 (key("serde", "2.0.0"), Some("MIT"), Role::Runtime),
             ],
-            Some(&checksums),
+            &checksums,
+            &config(),
         )
         .unwrap();
         assert_eq!(
@@ -384,13 +392,10 @@ mod tests {
     #[test]
     fn rejects_colliding_references() {
         // a workspace member and a crates.io package with the same name and version
-        let err = render(
-            &[
-                (path_key("serde", "1.0.0"), None, Role::Runtime),
-                (key("serde", "1.0.0"), Some("MIT"), Role::Runtime),
-            ],
-            None,
-        )
+        let err = render(&[
+            (path_key("serde", "1.0.0"), None, Role::Runtime),
+            (key("serde", "1.0.0"), Some("MIT"), Role::Runtime),
+        ])
         .unwrap_err();
         assert!(err.to_string().contains("share the reference"), "{err}");
     }
@@ -400,7 +405,12 @@ mod tests {
         let mut config = config();
         config.commercial_license = None;
         let deps = [(key("serde", "1.0.0"), Some("MIT"), Role::Runtime)];
-        let err = render_with(&deps, None, &config).unwrap_err();
+        let err = render_with(
+            &deps,
+            &Checksums::from_lockfile(&lockfile(&[("serde", "1.0.0", HASH_A)])).unwrap(),
+            &config,
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("commercial_license"), "{err}");
     }
 }

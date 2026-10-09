@@ -15,7 +15,8 @@ install from `main` without a tag should pin `--tag 0.2.1` until they migrate.
 - `sbom`: a CycloneDX 1.5 JSON SBOM from the same validated inventory as the license report.
   Runtime packages have `scope: required`, build-time packages `scope: excluded`; licenses are
   the declared SPDX expressions (commercial license for first-party and vendor packages);
-  `--lockfile` adds SHA-256 hashes; dependencies are the observed package edges;
+  the required `--lockfile` (the build's `Cargo.lock`) supplies every crates.io package's
+  SHA-256; dependencies are the observed package edges;
   `--omit-serial-number` with `SOURCE_DATE_EPOCH` gives reproducible output.
 - Every compiled package is classified as runtime or build-time by `cargo tree` (Cargo's own
   resolver), cross-checked against the build log: packages and (package, features) variants
