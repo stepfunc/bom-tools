@@ -24,14 +24,17 @@ fn evidence() -> &'static Evidence {
     static EVIDENCE: OnceLock<Evidence> = OnceLock::new();
     EVIDENCE.get_or_init(|| {
         let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/workspace");
-        // a fixed directory next to the test binary (inside cargo's target directory, so it is
-        // bounded and removed by `cargo clean`), emptied first so every artifact is built by
-        // this run
+        // a per-process directory next to the test binary: isolated from concurrent test runs,
+        // inside cargo's target directory (removed by `cargo clean`), and emptied first so
+        // every artifact is built by this run
         let dir = std::env::current_exe()
             .unwrap()
             .parent()
             .unwrap()
-            .join("allow-list-fixture-evidence");
+            .join(format!(
+                "allow-list-fixture-evidence-{}",
+                std::process::id()
+            ));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let host = host_triple();

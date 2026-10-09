@@ -447,7 +447,7 @@ fn sbom_needs_a_commercial_license_and_lockfile_checksums() {
         .unwrap()
         .parent()
         .unwrap()
-        .join("allow-list-golden-config");
+        .join(format!("allow-list-golden-config-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     evidence.config = dir.join("allowed.json");
     std::fs::write(&evidence.config, config.to_string()).unwrap();
