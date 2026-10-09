@@ -2,7 +2,7 @@
 resolver = "2"
 
 members = [
-    "allow-list",
+    "bom-tools",
 ]
 
 [workspace.lints.rust]

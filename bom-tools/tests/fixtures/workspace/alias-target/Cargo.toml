@@ -1,0 +1,9 @@
+[package]
+name = "alias-target"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# a custom library name, used through a renamed optional dependency
+[lib]
+name = "aliaslib"

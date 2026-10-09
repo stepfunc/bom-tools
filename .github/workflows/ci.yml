@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --all-targets
+      - name: Test
+        # includes tests that build tests/fixtures/workspace with the installed Cargo
+        run: cargo test
+      - name: Validate an SBOM against the CycloneDX 1.5 schema
+        env:
+          CYCLONEDX_CLI_VERSION: v0.33.1
+          CYCLONEDX_CLI_SHA256: bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746
+        run: |
+          curl -sSLo cyclonedx https://github.com/CycloneDX/cyclonedx-cli/releases/download/$CYCLONEDX_CLI_VERSION/cyclonedx-linux-x64
+          echo "$CYCLONEDX_CLI_SHA256  cyclonedx" | sha256sum -c
+          chmod +x cyclonedx
+          F=bom-tools/tests/fixtures/dnp3
+          cargo run -- sbom -e $F/targets --root-package dnp3-ffi -m $F/metadata.json -c $F/allowed.json --lockfile $F/Cargo.lock > sbom.json
+          ./cyclonedx validate --input-file sbom.json --input-version v1_5 --fail-on-errors

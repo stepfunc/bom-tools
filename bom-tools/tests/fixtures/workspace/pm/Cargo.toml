@@ -1,0 +1,13 @@
+[package]
+name = "pm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# the same package as a runtime dependency of `app`, but with different features (host variant)
+shared = { path = "../shared", features = ["host-feat"] }
+pmonly = { path = "../pmonly" }
