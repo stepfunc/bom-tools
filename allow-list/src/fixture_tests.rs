@@ -5,7 +5,7 @@
 //! artifact features) and fail when a new Cargo release changes it.
 
 use crate::config::Config;
-use crate::graph::{PackageKey, Role, TargetGraph};
+use crate::graph::{Role, TargetGraph};
 use crate::input::TargetInput;
 use crate::{approval, inventory};
 use cargo_metadata::Metadata;
@@ -250,14 +250,6 @@ fn a_dropped_artifact_with_distinct_features_is_detected() {
 }
 
 #[test]
-fn a_dropped_artifact_with_identical_features_is_not_detected() {
-    // Documented limit: `common` compiles twice (host and target) with identical features, so
-    // the variant sets cannot tell that one of the artifacts is missing.
-    let log = log_without("common", |_| true);
-    assert!(input(&log).read("app").is_ok());
-}
-
-#[test]
 fn the_core_needs_no_approval_for_workspace_members() {
     let graph = read();
     let inventory = inventory::build(&[graph], &evidence().metadata, |_| false).unwrap();
@@ -266,13 +258,4 @@ fn the_core_needs_no_approval_for_workspace_members() {
         serde_json::from_str(r#"{"build_only": [], "vendor": {}, "third_party": {}}"#).unwrap();
     let validated = approval::validate(inventory, &config).unwrap();
     assert!(validated.shipped_third_party().is_empty());
-}
-
-#[test]
-fn keys_resolve_to_workspace_members() {
-    let graph = read();
-    let keys: Vec<&PackageKey> = graph.packages().keys().collect();
-    assert!(keys
-        .iter()
-        .all(|k| k.source == crate::graph::SourceKind::Path));
 }

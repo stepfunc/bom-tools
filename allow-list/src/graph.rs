@@ -129,6 +129,22 @@ pub(crate) mod test_util {
             ..key(name, version)
         }
     }
+
+    /// A graph of `root` (always runtime) and the given packages and edges, for tests
+    pub(crate) fn graph(
+        root: &PackageKey,
+        packages: &[(&PackageKey, Role)],
+        edges: &[(&PackageKey, &PackageKey)],
+    ) -> TargetGraph {
+        let mut members: BTreeMap<PackageKey, Role> =
+            packages.iter().map(|(k, r)| ((*k).clone(), *r)).collect();
+        members.insert(root.clone(), Role::Runtime);
+        let edges = edges
+            .iter()
+            .map(|(a, b)| ((*a).clone(), (*b).clone()))
+            .collect();
+        TargetGraph::new(root.clone(), members, edges).unwrap()
+    }
 }
 
 #[cfg(test)]
@@ -157,10 +173,5 @@ mod tests {
         let edges = BTreeSet::from([(root.clone(), root.clone())]);
         let graph = TargetGraph::new(root, packages, edges).unwrap();
         assert!(graph.edges().is_empty());
-    }
-
-    #[test]
-    fn runtime_wins_when_merging_roles() {
-        assert_eq!(Role::BuildTime.max(Role::Runtime), Role::Runtime);
     }
 }

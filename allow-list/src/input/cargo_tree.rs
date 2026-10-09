@@ -140,13 +140,6 @@ mod tests {
     use super::*;
     use crate::graph::test_util::{key, path_key};
 
-    fn variant(key: PackageKey, features: &[&str]) -> Variant {
-        Variant {
-            key,
-            features: features.iter().map(|f| f.to_string()).collect(),
-        }
-    }
-
     #[test]
     fn parses_every_line_form() {
         let tree = parse(concat!(
@@ -162,13 +155,13 @@ mod tests {
         assert_eq!(tree.root, path_key("app", "1.0.0"));
         assert!(tree
             .variants
-            .contains(&variant(path_key("app", "1.0.0"), &["default", "std"])));
+            .contains(&Variant::new(path_key("app", "1.0.0"), &["default", "std"])));
         assert!(tree
             .variants
-            .contains(&variant(key("serde_derive", "1.0.228"), &["default"])));
+            .contains(&Variant::new(key("serde_derive", "1.0.228"), &["default"])));
         assert!(tree
             .variants
-            .contains(&variant(path_key("local", "0.1.0"), &[])));
+            .contains(&Variant::new(path_key("local", "0.1.0"), &[])));
         let git = tree
             .packages()
             .into_iter()
@@ -181,7 +174,7 @@ mod tests {
         );
         assert!(tree
             .variants
-            .contains(&variant(path_key("local_macro", "0.1.0"), &[])));
+            .contains(&Variant::new(path_key("local_macro", "0.1.0"), &[])));
         assert_eq!(tree.variants.len(), 6);
         assert!(tree
             .edges

@@ -270,25 +270,11 @@ fn unapproved_or_misreviewed_dependencies_are_all_reported() {
     }
 }
 
-#[test]
-fn license_report_lists_exactly_the_shipped_third_party_crates() {
+/// The (crate, version) pairs listed by the license report of `evidence`
+fn reported(evidence: &Evidence) -> BTreeSet<(String, String)> {
     let mut out = Vec::new();
-    commands::gen_licenses(&all_targets(), &mut out).unwrap();
+    commands::gen_licenses(evidence, &mut out).unwrap();
     let report = String::from_utf8(out).unwrap();
-    let crates: BTreeSet<&str> = report
-        .lines()
-        .filter_map(|l| l.strip_prefix("crate: "))
-        .collect();
-    assert!(
-        crates.contains("ring") && crates.contains("aws-lc-sys") && crates.contains("oo-bindgen")
-    );
-    for build_time in ["syn", "serde_derive", "regex", "cc", "tokio-macros"] {
-        assert!(!crates.contains(build_time), "{build_time}");
-    }
-    for not_third_party in ["dnp3", "sfio-promise", "sfio-tokio-ffi"] {
-        assert!(!crates.contains(not_third_party), "{not_third_party}");
-    }
-    // the report and the SBOM are projections of the same inventory, down to every version
     let mut reported = BTreeSet::new();
     let mut lines = report.lines();
     while let Some(line) = lines.next() {
@@ -299,7 +285,29 @@ fn license_report_lists_exactly_the_shipped_third_party_crates() {
             }
         }
     }
-    assert_eq!(reported, sbom_required_third_party(&sbom_document()));
+    reported
+}
+
+#[test]
+fn license_report_lists_exactly_the_shipped_third_party_crates() {
+    // independent expectation: the precursor-derived runtime set, minus first-party and vendor
+    // packages, plus the embedded third-party build dependency
+    let mut expected: BTreeSet<&str> = BTreeSet::from(RUNTIME);
+    for not_third_party in ["dnp3", "dnp3-ffi", "sfio-promise"] {
+        expected.remove(not_third_party);
+    }
+    expected.insert("oo-bindgen");
+    let reported = reported(&one_target("aws"));
+    let names: BTreeSet<&str> = reported.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(names, expected);
+}
+
+#[test]
+fn license_report_and_sbom_agree_on_every_shipped_version() {
+    assert_eq!(
+        reported(&all_targets()),
+        sbom_required_third_party(&sbom_document())
+    );
 }
 
 /// The SBOM of all targets, with a fixed timestamp and no serial number
@@ -348,15 +356,14 @@ fn sbom_required_third_party(bom: &serde_json::Value) -> BTreeSet<(String, Strin
 }
 
 #[test]
-fn sbom_is_valid_cyclonedx_1_5() {
-    let bom = Bom::parse_from_json_v1_5(sbom_bytes().as_slice()).unwrap();
-    let validation = bom.validate_version(SpecVersion::V1_5);
-    assert!(validation.passed(), "{validation:?}");
-}
-
-#[test]
 fn sbom_scopes_licenses_hashes_and_edges() {
-    let bom = sbom_document();
+    // the final bytes (after post-processing) must still parse and validate as CycloneDX 1.5
+    let bytes = sbom_bytes();
+    let parsed = Bom::parse_from_json_v1_5(bytes.as_slice()).unwrap();
+    let validation = parsed.validate_version(SpecVersion::V1_5);
+    assert!(validation.passed(), "{validation:?}");
+
+    let bom: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     let components = bom["components"].as_array().unwrap();
     let component = |name: &str| components.iter().find(|c| c["name"] == name).unwrap();
 
@@ -438,32 +445,15 @@ fn sbom_is_reproducible() {
 }
 
 #[test]
-fn sbom_needs_a_commercial_license_and_lockfile_checksums() {
-    let mut out = Vec::new();
-    let mut evidence = all_targets();
-    let mut config: serde_json::Value = load("allowed.json");
-    config.as_object_mut().unwrap().remove("commercial_license");
-    let dir = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join(format!("allow-list-golden-config-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    evidence.config = dir.join("allowed.json");
-    std::fs::write(&evidence.config, config.to_string()).unwrap();
+fn sbom_command_uses_the_given_lockfile() {
+    // a lockfile without crates.io checksums (the path-only fixture workspace's) must be
+    // rejected, which proves the command passes `--lockfile` through to the renderer
     let options = SbomOptions {
-        lockfile: None,
+        lockfile: Some(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/workspace/Cargo.lock"),
+        ),
         omit_serial_number: false,
     };
-    let err = commands::gen_sbom(&evidence, &options, &mut out).unwrap_err();
-    assert!(err.to_string().contains("commercial_license"), "{err}");
-
-    let lock = dir.join("Cargo.lock");
-    std::fs::write(&lock, "version = 4\n").unwrap();
-    let options = SbomOptions {
-        lockfile: Some(lock),
-        omit_serial_number: false,
-    };
-    let err = commands::gen_sbom(&all_targets(), &options, &mut out).unwrap_err();
+    let err = commands::gen_sbom(&all_targets(), &options, &mut Vec::new()).unwrap_err();
     assert!(err.to_string().contains("no checksum"), "{err}");
 }

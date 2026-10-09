@@ -192,7 +192,8 @@ fn declared_license(package: &Package) -> DeclaredLicense {
 
 #[cfg(test)]
 pub(crate) mod test_util {
-    use crate::graph::{PackageKey, SourceKind};
+    use crate::graph::test_util::{graph, path_key};
+    use crate::graph::{PackageKey, Role, SourceKind, TargetGraph};
     use cargo_metadata::Metadata;
     use serde_json::{json, Value};
 
@@ -257,28 +258,26 @@ pub(crate) mod test_util {
         }))
         .unwrap()
     }
+
+    /// Metadata and the graph of a workspace root `app 1.0.0` that depends directly on each of
+    /// the given (package, declared license, role)
+    pub(crate) fn app_with(deps: &[(PackageKey, Option<&str>, Role)]) -> (Metadata, TargetGraph) {
+        let app = path_key("app", "1.0.0");
+        let mut packages: Vec<(PackageKey, Option<&str>)> =
+            deps.iter().map(|(k, l, _)| (k.clone(), *l)).collect();
+        packages.push((app.clone(), None));
+        let members: Vec<(&PackageKey, Role)> = deps.iter().map(|(k, _, r)| (k, *r)).collect();
+        let edges: Vec<(&PackageKey, &PackageKey)> =
+            deps.iter().map(|(k, _, _)| (&app, k)).collect();
+        (metadata(&packages), graph(&app, &members, &edges))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::test_util::metadata;
     use super::*;
-    use crate::graph::test_util::{key, path_key};
-
-    fn graph(
-        root: &PackageKey,
-        packages: &[(&PackageKey, Role)],
-        edges: &[(&PackageKey, &PackageKey)],
-    ) -> TargetGraph {
-        let mut members: BTreeMap<PackageKey, Role> =
-            packages.iter().map(|(k, r)| ((*k).clone(), *r)).collect();
-        members.insert(root.clone(), Role::Runtime);
-        let edges = edges
-            .iter()
-            .map(|(a, b)| ((*a).clone(), (*b).clone()))
-            .collect();
-        TargetGraph::new(root.clone(), members, edges).unwrap()
-    }
+    use crate::graph::test_util::{graph, key, path_key};
 
     fn names<'a>(inventory: &'a Inventory, role: Role) -> Vec<&'a str> {
         inventory
@@ -346,6 +345,19 @@ mod tests {
             .unwrap();
         assert!(matches!(tool.license, DeclaredLicense::Missing));
         assert!(!tool.first_party);
+    }
+
+    #[test]
+    fn runtime_wins_whatever_the_target_order() {
+        let app = path_key("app", "1.0.0");
+        let cc = key("cc", "1.0.0");
+        let meta = metadata(&[(app.clone(), None), (cc.clone(), Some("MIT"))]);
+        let build_time = || graph(&app, &[(&cc, Role::BuildTime)], &[]);
+        let runtime = || graph(&app, &[(&cc, Role::Runtime)], &[]);
+        for graphs in [[build_time(), runtime()], [runtime(), build_time()]] {
+            let inventory = build(&graphs, &meta, |_| false).unwrap();
+            assert_eq!(inventory.components[0].role, Role::Runtime);
+        }
     }
 
     #[test]

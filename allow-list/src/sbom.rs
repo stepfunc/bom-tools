@@ -234,9 +234,8 @@ mod tests {
     use crate::approval;
     use crate::config::Config;
     use crate::graph::test_util::{key, path_key};
-    use crate::graph::{PackageKey, TargetGraph};
-    use crate::inventory::{self, test_util::metadata};
-    use std::collections::{BTreeMap, BTreeSet};
+    use crate::graph::PackageKey;
+    use crate::inventory::{self, test_util::app_with};
 
     const HASH_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const HASH_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -265,22 +264,17 @@ mod tests {
         deps: &[(PackageKey, Option<&str>, Role)],
         checksums: Option<&Checksums>,
     ) -> Result<serde_json::Value, anyhow::Error> {
-        let app = path_key("app", "1.0.0");
-        let mut packages: Vec<(PackageKey, Option<&str>)> =
-            deps.iter().map(|(k, l, _)| (k.clone(), *l)).collect();
-        packages.push((app.clone(), None));
-        let meta = metadata(&packages);
-        let mut members: BTreeMap<PackageKey, Role> =
-            deps.iter().map(|(k, _, r)| (k.clone(), *r)).collect();
-        members.insert(app.clone(), Role::Runtime);
-        let edges: BTreeSet<_> = deps
-            .iter()
-            .map(|(k, _, _)| (app.clone(), k.clone()))
-            .collect();
-        let graph = TargetGraph::new(app, members, edges)?;
+        render_with(deps, checksums, &config())
+    }
+
+    fn render_with(
+        deps: &[(PackageKey, Option<&str>, Role)],
+        checksums: Option<&Checksums>,
+        config: &Config,
+    ) -> Result<serde_json::Value, anyhow::Error> {
+        let (meta, graph) = app_with(deps);
         let inventory = inventory::build(&[graph], &meta, |_| false)?;
-        let config = config();
-        let validated = approval::validate(inventory, &config)?;
+        let validated = approval::validate(inventory, config)?;
         let options = Options {
             checksums,
             omit_serial_number: true,
@@ -399,5 +393,14 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("share the reference"), "{err}");
+    }
+
+    #[test]
+    fn requires_a_commercial_license() {
+        let mut config = config();
+        config.commercial_license = None;
+        let deps = [(key("serde", "1.0.0"), Some("MIT"), Role::Runtime)];
+        let err = render_with(&deps, None, &config).unwrap_err();
+        assert!(err.to_string().contains("commercial_license"), "{err}");
     }
 }

@@ -198,21 +198,23 @@ mod tests {
     fn reads_variants_and_products_and_skips_build_scripts() {
         let text = log(&[
             "   Compiling serde v1.0.228".to_string(),
-            artifact(SERDE, &["custom-build"], &["std"], "/t/build-script-build"),
+            // distinct features, so the variant set changes if build scripts are not skipped
+            artifact(
+                SERDE,
+                &["custom-build"],
+                &["script"],
+                "/t/build-script-build",
+            ),
             artifact(SERDE, &["lib"], &["std"], "/t/libserde.rlib"),
             artifact(SERDE, &["lib"], &["derive", "std"], "/t/libserde-host.rlib"),
             root_artifact(),
             finished(true),
         ]);
-        let variant = |key, features: &[&str]| Variant {
-            key,
-            features: features.iter().map(|f| f.to_string()).collect(),
-        };
         let log = read(text.as_bytes()).unwrap();
         let expected = BTreeSet::from([
-            variant(key("serde", "1.0.228"), &["std"]),
-            variant(key("serde", "1.0.228"), &["derive", "std"]),
-            variant(path_key("app", "1.0.0"), &["default"]),
+            Variant::new(key("serde", "1.0.228"), &["std"]),
+            Variant::new(key("serde", "1.0.228"), &["derive", "std"]),
+            Variant::new(path_key("app", "1.0.0"), &["default"]),
         ]);
         assert_eq!(log.variants, expected);
         assert!(log.products.contains(&path_key("app", "1.0.0")));
@@ -252,7 +254,13 @@ mod tests {
             root_artifact().replacen("\"features\":", "\"features\":[],\"features\":", 1);
         let text = log(&[duplicate_features, finished(true)]);
         assert!(read(text.as_bytes()).is_err());
-        let blank_after = log(&[root_artifact(), finished(true), String::new()]);
+        // blank lines (empty or whitespace) after the end are allowed
+        let blank_after = log(&[
+            root_artifact(),
+            finished(true),
+            String::new(),
+            "  ".to_string(),
+        ]);
         assert!(read(blank_after.as_bytes()).is_ok());
     }
 

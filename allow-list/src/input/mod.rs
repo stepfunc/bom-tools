@@ -28,6 +28,16 @@ struct Variant {
     features: BTreeSet<String>,
 }
 
+#[cfg(test)]
+impl Variant {
+    fn new(key: PackageKey, features: &[&str]) -> Self {
+        Self {
+            key,
+            features: features.iter().map(|f| f.to_string()).collect(),
+        }
+    }
+}
+
 /// The build evidence for one target
 #[derive(Debug, Clone)]
 pub(crate) enum TargetInput {
@@ -193,19 +203,12 @@ mod tests {
     const TREE: &str = "0app v1.0.0 (/build/app)|default\n1serde v1.0.0|std\n1cc v1.0.0|\n";
     const RUNTIME: &str = "0app v1.0.0 (/build/app)|default\n1serde v1.0.0|std\n";
 
-    fn variant(key: PackageKey, features: &[&str]) -> Variant {
-        Variant {
-            key,
-            features: features.iter().map(|f| f.to_string()).collect(),
-        }
-    }
-
     fn log() -> BuildLog {
         BuildLog {
             variants: BTreeSet::from([
-                variant(path_key("app", "1.0.0"), &["default"]),
-                variant(key("serde", "1.0.0"), &["std"]),
-                variant(key("cc", "1.0.0"), &[]),
+                Variant::new(path_key("app", "1.0.0"), &["default"]),
+                Variant::new(key("serde", "1.0.0"), &["std"]),
+                Variant::new(key("cc", "1.0.0"), &[]),
             ]),
             products: BTreeSet::from([path_key("app", "1.0.0")]),
         }
@@ -228,12 +231,16 @@ mod tests {
     #[test]
     fn rejects_a_package_missing_from_either_side() {
         let mut dropped = log();
-        dropped.variants.remove(&variant(key("cc", "1.0.0"), &[]));
+        dropped
+            .variants
+            .remove(&Variant::new(key("cc", "1.0.0"), &[]));
         assert!(graph(&dropped, TREE, RUNTIME)
             .unwrap_err()
             .contains("cc@1.0.0"));
         let mut extra = log();
-        extra.variants.insert(variant(key("ring", "1.0.0"), &[]));
+        extra
+            .variants
+            .insert(Variant::new(key("ring", "1.0.0"), &[]));
         assert!(graph(&extra, TREE, RUNTIME)
             .unwrap_err()
             .contains("ring@1.0.0"));
@@ -244,10 +251,10 @@ mod tests {
         let mut other = log();
         other
             .variants
-            .remove(&variant(key("serde", "1.0.0"), &["std"]));
+            .remove(&Variant::new(key("serde", "1.0.0"), &["std"]));
         other
             .variants
-            .insert(variant(key("serde", "1.0.0"), &["std", "derive"]));
+            .insert(Variant::new(key("serde", "1.0.0"), &["std", "derive"]));
         let err = graph(&other, TREE, RUNTIME).unwrap_err();
         assert!(err.contains("variants"), "{err}");
     }

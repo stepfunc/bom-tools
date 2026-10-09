@@ -216,10 +216,9 @@ fn check_reviewed_license(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::test_util::{key, path_key};
-    use crate::graph::{PackageKey, TargetGraph};
-    use crate::inventory::test_util::metadata;
-    use cargo_metadata::Metadata;
+    use crate::graph::test_util::key;
+    use crate::graph::PackageKey;
+    use crate::inventory::test_util::app_with;
 
     fn config(json: serde_json::Value) -> Config {
         serde_json::from_value(json).unwrap()
@@ -231,19 +230,11 @@ mod tests {
 
     /// Inventory of an `app` with the given (name, declared license, role) dependencies
     fn check(deps: &[(&str, Option<&str>, Role)], config: &Config) -> Result<(), String> {
-        let app = path_key("app", "1.0.0");
-        let keys: Vec<(PackageKey, Option<&str>, Role)> = deps
+        let deps: Vec<(PackageKey, Option<&str>, Role)> = deps
             .iter()
             .map(|(name, license, role)| (key(name, "1.0.0"), *license, *role))
             .collect();
-        let mut packages: Vec<(PackageKey, Option<&str>)> =
-            keys.iter().map(|(k, l, _)| (k.clone(), *l)).collect();
-        packages.push((app.clone(), None));
-        let meta: Metadata = metadata(&packages);
-        let mut members: BTreeMap<PackageKey, Role> =
-            keys.iter().map(|(k, _, r)| (k.clone(), *r)).collect();
-        members.insert(app.clone(), Role::Runtime);
-        let graph = TargetGraph::new(app, members, BTreeSet::new()).unwrap();
+        let (meta, graph) = app_with(&deps);
         let inventory = crate::inventory::build(&[graph], &meta, |_| false).unwrap();
         validate(inventory, config)
             .map(|_| ())
@@ -370,19 +361,10 @@ mod tests {
 
     #[test]
     fn license_report_lists_only_shipped_third_party_packages() {
-        let app = path_key("app", "1.0.0");
-        let (serde, regex) = (key("serde", "1.0.0"), key("regex", "1.0.0"));
-        let meta = metadata(&[
-            (app.clone(), None),
-            (serde.clone(), Some("MIT")),
-            (regex.clone(), Some("MIT")),
+        let (meta, graph) = app_with(&[
+            (key("serde", "1.0.0"), Some("MIT"), Role::Runtime),
+            (key("regex", "1.0.0"), Some("MIT"), Role::BuildTime),
         ]);
-        let members = BTreeMap::from([
-            (app.clone(), Role::Runtime),
-            (serde, Role::Runtime),
-            (regex, Role::BuildTime),
-        ]);
-        let graph = TargetGraph::new(app, members, BTreeSet::new()).unwrap();
         let inventory = crate::inventory::build(&[graph], &meta, |_| false).unwrap();
         let mut json = empty();
         json["third_party"]["serde"] = mit("serde");
