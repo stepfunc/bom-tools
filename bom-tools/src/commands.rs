@@ -35,7 +35,7 @@ pub(crate) fn gen_licenses<W: Write>(evidence: &Evidence, w: W) -> Result<(), an
     Ok(licenses::write(&validated, w)?)
 }
 
-/// Options of the SBOM commands
+/// Options of the SBOM command
 pub(crate) struct SbomOptions {
     /// `Cargo.lock` from which to take SHA-256 hashes of crates.io packages
     pub(crate) lockfile: Option<PathBuf>,

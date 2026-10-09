@@ -77,7 +77,7 @@ bom-tools sbom -e evidence --root-package dnp3-ffi -m metadata.json -c allowed.j
 ### Migrating from 0.2
 
 0.3.0 renamed the executable from `allow-list` to `bom-tools`, replaced `gen-licenses-log*`
-with `licenses` and `sbom`, and removed `gen-licenses` / `gen-licenses-dir`, which read
+with `licenses`, added `sbom`, and removed `gen-licenses` / `gen-licenses-dir`, which read
 `cargo cyclonedx` SBOMs: those describe cargo-cyclonedx's own feature selection, not the
 product's build. Until you migrate, pin
 `cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.1`.
@@ -113,7 +113,7 @@ our own code and need no entry; the root package must be one.
   declared SPDX `license`, and the reviewed licenses must satisfy it (reviewed `MIT` satisfies
   `MIT OR Apache-2.0` but not `MIT AND Apache-2.0`).
 
-`commercial_license` is required by the SBOM commands. `embedded: true` marks a build-time dependency whose own code ships anyway (for example a build
+`commercial_license` is required by the `sbom` command. `embedded: true` marks a build-time dependency whose own code ships anyway (for example a build
 script that copies source it provides into the product); it is treated as runtime, its
 dependencies are not. License names: `MIT`, `ISC`, `BSD3` (with `copyright`), `Apache2`,
 `OpenSSL`, `BSLv1`, `MPLv2`, `UnicodeDFS2016`.
