@@ -29,21 +29,9 @@ fn main() -> Result<(), anyhow::Error> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::GenLicensesLog { target, common } => {
-            commands::gen_licenses(&target.evidence(common), stdout())
+        Commands::Licenses { evidence } => commands::gen_licenses(&evidence.evidence()?, stdout()),
+        Commands::Sbom { evidence, sbom } => {
+            commands::gen_sbom(&evidence.evidence()?, &sbom.into(), stdout())
         }
-        Commands::GenLicensesLogDir { targets, common } => {
-            commands::gen_licenses(&targets.evidence(common)?, stdout())
-        }
-        Commands::GenSbomLog {
-            target,
-            common,
-            sbom,
-        } => commands::gen_sbom(&target.evidence(common), &sbom.into(), stdout()),
-        Commands::GenSbomLogDir {
-            targets,
-            common,
-            sbom,
-        } => commands::gen_sbom(&targets.evidence(common)?, &sbom.into(), stdout()),
     }
 }

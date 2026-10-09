@@ -1,5 +1,5 @@
 # A small workspace exercising the cases the build-log + cargo tree reader must classify;
-# built for real by the tests in `allow-list/src/fixture_tests.rs`.
+# built for real by the tests in `bom-tools/src/fixture_tests.rs`.
 [workspace]
 resolver = "2"
 members = ["app", "shared", "hostextra", "common", "pm", "pmonly", "tool", "alias-target", "optdep", "winonly", "unixonly"]

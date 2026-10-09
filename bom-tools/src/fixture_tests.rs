@@ -31,10 +31,7 @@ fn evidence() -> &'static Evidence {
             .unwrap()
             .parent()
             .unwrap()
-            .join(format!(
-                "allow-list-fixture-evidence-{}",
-                std::process::id()
-            ));
+            .join(format!("bom-tools-fixture-evidence-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let host = host_triple();

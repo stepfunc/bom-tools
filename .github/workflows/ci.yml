@@ -28,6 +28,6 @@ jobs:
           curl -sSLo cyclonedx https://github.com/CycloneDX/cyclonedx-cli/releases/download/$CYCLONEDX_CLI_VERSION/cyclonedx-linux-x64
           echo "$CYCLONEDX_CLI_SHA256  cyclonedx" | sha256sum -c
           chmod +x cyclonedx
-          F=allow-list/tests/fixtures/dnp3
-          cargo run -- gen-sbom-log-dir -l $F/targets --root-package dnp3-ffi -m $F/metadata.json -c $F/allowed.json --lockfile $F/Cargo.lock > sbom.json
+          F=bom-tools/tests/fixtures/dnp3
+          cargo run -- sbom -e $F/targets --root-package dnp3-ffi -m $F/metadata.json -c $F/allowed.json --lockfile $F/Cargo.lock > sbom.json
           ./cyclonedx validate --input-file sbom.json --input-version v1_5 --fail-on-errors

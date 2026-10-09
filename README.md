@@ -1,8 +1,8 @@
 # bom-tools
 
-`allow-list` produces the third-party license report (`third-party-licenses.txt`) and a
+`bom-tools` produces the third-party license report (`third-party-licenses.txt`) and a
 CycloneDX 1.5 SBOM for a Rust product, from the evidence of the build that produced it, and
-checks every dependency against a reviewed allow-list (`allowed.json`).
+checks every dependency against a reviewed allow list (`allowed.json`).
 
 ```sh
 cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.3.0
@@ -58,28 +58,29 @@ never decides scope or roles.
 
 ## Commands
 
-0.3.0 removed `gen-licenses` / `gen-licenses-dir`, which read `cargo cyclonedx` SBOMs:
-those describe cargo-cyclonedx's own feature selection, not the product's build. Produce the
-build evidence above and use the `*-log` commands; until you migrate, pin
-`cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.1`.
+Both commands read a directory with one subdirectory per target (holding `build.json`,
+`tree.txt` and `runtime-tree.txt`); a single target is a directory with one subdirectory.
 
 ```sh
-# one target
-allow-list gen-licenses-log -g build.json --tree tree.txt --runtime-tree runtime-tree.txt \
-    --root-package dnp3-ffi -m metadata.json -c allowed.json > third-party-licenses.txt
-
-# every target, one subdirectory each (build.json, tree.txt, runtime-tree.txt)
-allow-list gen-licenses-log-dir -l evidence --root-package dnp3-ffi -m metadata.json -c allowed.json \
+bom-tools licenses -e evidence --root-package dnp3-ffi -m metadata.json -c allowed.json \
     > third-party-licenses.txt
-allow-list gen-sbom-log-dir -l evidence --root-package dnp3-ffi -m metadata.json -c allowed.json \
+bom-tools sbom -e evidence --root-package dnp3-ffi -m metadata.json -c allowed.json \
     --lockfile Cargo.lock > dnp3-ffi-1.7.0.cdx.json
 ```
 
-`gen-sbom-log` / `gen-sbom-log-dir` take the same inputs plus:
+`sbom` also takes:
 
 - `--lockfile <Cargo.lock>`: add each crates.io package's SHA-256 (the `.crate` archive hash);
 - `--omit-serial-number`: with `SOURCE_DATE_EPOCH` (used as the timestamp), output is
   byte-for-byte reproducible.
+
+### Migrating from 0.2
+
+0.3.0 renamed the executable from `allow-list` to `bom-tools`, replaced `gen-licenses-log*`
+with `licenses` and `sbom`, and removed `gen-licenses` / `gen-licenses-dir`, which read
+`cargo cyclonedx` SBOMs: those describe cargo-cyclonedx's own feature selection, not the
+product's build. Until you migrate, pin
+`cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.1`.
 
 ## `allowed.json`
 
@@ -137,7 +138,7 @@ Supported builds: `cargo build` of a library or binary (`cargo check`, tests, ex
 benches are rejected), crates.io and workspace packages. Not supported: build-script overrides,
 `-Zbuild-std`, and non-Rust components inside `-sys` crates beyond the crate's declared license.
 
-When Cargo's SBOM precursor files (`-Z sbom`) are stable, `allow-list` will read them as its
+When Cargo's SBOM precursor files (`-Z sbom`) are stable, `bom-tools` will read them as its
 build evidence instead of the build log and `cargo tree` outputs
 ([#8](https://github.com/stepfunc/bom-tools/issues/8)). The approval rules, the license report
 and the SBOM stay the same; only the input reader changes.
