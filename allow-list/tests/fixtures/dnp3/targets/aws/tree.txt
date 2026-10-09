@@ -1,0 +1,263 @@
+0dnp3-ffi v1.7.0 (/build/dnp3/ffi/dnp3-ffi)|enable-tls,serial,tls-aws-lc
+1dnp3 v1.7.0 (/build/dnp3/dnp3)|enable-tls,ffi,serial,sfio-rustls-config,tls-aws-lc,tokio-rustls,tokio-serial
+2chrono v0.4.44|alloc,clock,default,iana-time-zone,js-sys,now,oldtime,std,wasm-bindgen,wasmbind,winapi,windows-link
+3iana-time-zone v0.1.65|fallback
+3num-traits v0.2.19|
+4autocfg v1.5.0|
+2scursor v0.2.0|
+2sfio-rustls-config v0.4.0|crypto-aws-lc,default
+3pem v3.0.6|default,std
+4base64 v0.22.1|alloc,std
+3pkcs8 v0.10.2|alloc,encryption,pem,pkcs5,rand_core,std
+4der v0.7.10|alloc,oid,pem,std,zeroize
+5const-oid v0.9.6|
+5pem-rfc7468 v0.7.0|alloc
+6base64ct v1.8.3|alloc
+5zeroize v1.8.2|alloc,default
+4pkcs5 v0.7.1|alloc,pbes2
+5aes v0.8.4|
+6cfg-if v1.0.4|
+6cipher v0.4.4|block-padding
+7crypto-common v0.1.7|
+8generic-array v0.14.7|more_lengths
+9typenum v1.19.0|
+9version_check v0.9.5|
+8typenum v1.19.0|
+7inout v0.1.4|block-padding
+8block-padding v0.3.3|
+9generic-array v0.14.7|more_lengths (*)
+8generic-array v0.14.7|more_lengths (*)
+6cpufeatures v0.2.17|
+5cbc v0.1.2|block-padding,default
+6cipher v0.4.4|block-padding (*)
+5der v0.7.10|alloc,oid,pem,std,zeroize (*)
+5pbkdf2 v0.12.2|default,hmac
+6digest v0.10.7|block-buffer,core-api,default,mac,subtle
+7block-buffer v0.10.4|
+8generic-array v0.14.7|more_lengths (*)
+7crypto-common v0.1.7| (*)
+7subtle v2.6.1|
+6hmac v0.12.1|
+7digest v0.10.7|block-buffer,core-api,default,mac,subtle (*)
+5scrypt v0.11.0|
+6pbkdf2 v0.12.2|default,hmac (*)
+6salsa20 v0.10.2|
+7cipher v0.4.4|block-padding (*)
+6sha2 v0.10.9|
+7cfg-if v1.0.4|
+7cpufeatures v0.2.17|
+7digest v0.10.7|block-buffer,core-api,default,mac,subtle (*)
+5sha2 v0.10.9| (*)
+5spki v0.7.3|alloc,pem,std
+6der v0.7.10|alloc,oid,pem,std,zeroize (*)
+4rand_core v0.6.4|
+4spki v0.7.3|alloc,pem,std (*)
+3rustls v0.23.45|aws-lc-rs,aws_lc_rs,log,logging,std,tls12
+4aws-lc-rs v1.18.1|aws-lc-sys,prebuilt-nasm
+5aws-lc-sys v0.45.0|prebuilt-nasm
+6cc v1.2.60|parallel
+7find-msvc-tools v0.1.9|
+7jobserver v0.1.34|
+8libc v0.2.185|default,std
+7libc v0.2.185|default,std
+7shlex v1.3.0|default,std
+6cmake v0.1.58|
+7cc v1.2.60|parallel (*)
+6dunce v1.0.5|
+6fs_extra v1.3.0|
+6pkg-config v0.3.34|
+5zeroize v1.8.2|alloc,default
+4log v0.4.29|std
+4once_cell v1.21.4|alloc,default,race,std
+4rustls-pki-types v1.14.0|alloc,default,std
+5zeroize v1.8.2|alloc,default
+4rustls-webpki v0.103.15|alloc,aws-lc-rs,std
+5aws-lc-rs v1.18.1|aws-lc-sys,prebuilt-nasm (*)
+5rustls-pki-types v1.14.0|alloc,default,std (*)
+5untrusted v0.9.0|
+4subtle v2.6.1|
+4zeroize v1.8.2|alloc,default
+3rustls-pki-types v1.14.0|alloc,default,std (*)
+3rustls-webpki v0.103.15|alloc,aws-lc-rs,std (*)
+3rx509 v0.2.1|
+2tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros
+3bytes v1.11.1|default,std
+3libc v0.2.185|default,extra_traits,std
+3mio v1.2.0|default,log,net,os-ext,os-poll
+4libc v0.2.185|default,extra_traits,std
+4log v0.4.29|std
+3pin-project-lite v0.2.17|
+3socket2 v0.6.3|all
+4libc v0.2.185|default,extra_traits,std
+3tokio-macros v2.7.0 (proc-macro)|
+4proc-macro2 v1.0.106|default,proc-macro
+5unicode-ident v1.0.24|
+4quote v1.0.45|default,proc-macro
+5proc-macro2 v1.0.106|default,proc-macro (*)
+4syn v2.0.117|clone-impls,default,derive,extra-traits,full,parsing,printing,proc-macro,visit-mut
+5proc-macro2 v1.0.106|default,proc-macro (*)
+5quote v1.0.45|default,proc-macro (*)
+5unicode-ident v1.0.24|
+2tokio-rustls v0.26.4|tls12
+3rustls v0.23.45|aws-lc-rs,aws_lc_rs,log,logging,std,tls12 (*)
+3tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros (*)
+2tokio-serial v5.4.5|
+3cfg-if v1.0.4|
+3futures v0.3.32|alloc,async-await,default,executor,futures-executor,std
+4futures-channel v0.3.32|alloc,futures-sink,sink,std
+5futures-core v0.3.32|alloc,std
+5futures-sink v0.3.32|alloc,std
+4futures-core v0.3.32|alloc,std
+4futures-executor v0.3.32|std
+5futures-core v0.3.32|alloc,std
+5futures-task v0.3.32|alloc,std
+5futures-util v0.3.32|alloc,async-await,async-await-macro,channel,futures-channel,futures-io,futures-macro,futures-sink,io,memchr,sink,slab,std
+6futures-channel v0.3.32|alloc,futures-sink,sink,std (*)
+6futures-core v0.3.32|alloc,std
+6futures-io v0.3.32|std
+6futures-macro v0.3.32 (proc-macro)|
+7proc-macro2 v1.0.106|default,proc-macro (*)
+7quote v1.0.45|default,proc-macro (*)
+7syn v2.0.117|clone-impls,default,derive,extra-traits,full,parsing,printing,proc-macro,visit-mut (*)
+6futures-sink v0.3.32|alloc,std
+6futures-task v0.3.32|alloc,std
+6memchr v2.8.0|alloc,default,std
+6pin-project-lite v0.2.17|
+6slab v0.4.12|std
+4futures-io v0.3.32|std
+4futures-sink v0.3.32|alloc,std
+4futures-task v0.3.32|alloc,std
+4futures-util v0.3.32|alloc,async-await,async-await-macro,channel,futures-channel,futures-io,futures-macro,futures-sink,io,memchr,sink,slab,std (*)
+3log v0.4.29|std
+3mio-serial v5.0.6|
+4log v0.4.29|std
+4mio v1.2.0|default,log,net,os-ext,os-poll (*)
+4nix v0.29.0|default,term
+5bitflags v2.11.1|
+5cfg-if v1.0.4|
+5libc v0.2.185|default,extra_traits,std
+5cfg_aliases v0.2.1|
+4serialport v4.9.0|
+5bitflags v2.11.1|
+5cfg-if v1.0.4|
+5nix v0.26.4|fs,ioctl,poll,process,signal,term
+6bitflags v1.3.2|default
+6cfg-if v1.0.4|
+6libc v0.2.185|default,extra_traits,std
+5scopeguard v1.2.0|default,use_std
+5unescaper v0.1.8|
+6thiserror v2.0.18|default,std
+7thiserror-impl v2.0.18 (proc-macro)|
+8proc-macro2 v1.0.106|default,proc-macro (*)
+8quote v1.0.45|default,proc-macro (*)
+8syn v2.0.117|clone-impls,default,derive,extra-traits,full,parsing,printing,proc-macro,visit-mut (*)
+3serialport v4.9.0| (*)
+3tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros (*)
+2tracing v0.1.44|attributes,default,std,tracing-attributes
+3pin-project-lite v0.2.17|
+3tracing-attributes v0.1.31 (proc-macro)|
+4proc-macro2 v1.0.106|default,proc-macro (*)
+4quote v1.0.45|default,proc-macro (*)
+4syn v2.0.117|clone-impls,default,derive,extra-traits,full,parsing,printing,proc-macro,visit-mut (*)
+3tracing-core v0.1.36|default,once_cell,std
+4once_cell v1.21.4|alloc,default,race,std
+2xxhash-rust v0.8.15|xxh64
+1lazy_static v1.5.0|
+1num_cpus v1.17.0|
+2libc v0.2.185|default,extra_traits,std
+1sfio-promise v0.2.0|
+1tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros (*)
+1tracing v0.1.44|attributes,default,std,tracing-attributes (*)
+1tracing-core v0.1.36|default,once_cell,std (*)
+1tracing-subscriber v0.3.23|alloc,ansi,chrono,default,fmt,json,nu-ansi-term,registry,serde,serde_json,sharded-slab,smallvec,std,thread_local,tracing-log,tracing-serde
+2chrono v0.4.44|alloc,clock,default,iana-time-zone,js-sys,now,oldtime,std,wasm-bindgen,wasmbind,winapi,windows-link (*)
+2nu-ansi-term v0.50.3|default,std
+2serde v1.0.228|default,std
+3serde_core v1.0.228|result,std
+2serde_json v1.0.149|default,std
+3itoa v1.0.18|
+3memchr v2.8.0|alloc,default,std
+3serde_core v1.0.228|result,std
+3zmij v1.0.21|
+2sharded-slab v0.1.7|
+3lazy_static v1.5.0|
+2smallvec v1.15.1|
+2thread_local v1.1.9|
+3cfg-if v1.0.4|
+2tracing-core v0.1.36|default,once_cell,std (*)
+2tracing-log v0.2.0|log-tracer,std
+3log v0.4.29|std
+3once_cell v1.21.4|alloc,default,race,std
+3tracing-core v0.1.36|default,once_cell,std (*)
+2tracing-serde v0.2.0|
+3serde v1.0.228|default,std (*)
+3tracing-core v0.1.36|default,once_cell,std (*)
+1dnp3-schema v1.7.0 (/build/dnp3/ffi/dnp3-schema)|
+2oo-bindgen v0.8.8|
+3backtrace v0.3.76|default,std
+4addr2line v0.25.1|
+5gimli v0.32.3|read,read-core
+4cfg-if v1.0.4|
+4libc v0.2.185|default,std
+4miniz_oxide v0.8.9|
+5adler2 v2.0.1|
+4object v0.37.3|archive,coff,elf,macho,pe,read_core,unaligned,xcoff
+5memchr v2.8.0|alloc,std
+4rustc-demangle v0.1.27|
+3clap v4.6.1|color,default,derive,error-context,help,std,suggestions,usage
+4clap_builder v4.6.0|color,error-context,help,std,suggestions,usage
+5anstream v1.0.0|auto,default,wincon
+6anstyle v1.0.14|default,std
+6anstyle-parse v1.0.0|default,utf8
+7utf8parse v0.2.2|default
+6anstyle-query v1.1.5|
+6colorchoice v1.0.5|
+6is_terminal_polyfill v1.70.2|default
+6utf8parse v0.2.2|default
+5anstyle v1.0.14|default,std
+5clap_lex v1.1.0|
+5strsim v0.11.1|
+4clap_derive v4.6.1 (proc-macro)|default
+5heck v0.5.0|
+5proc-macro2 v1.0.106|default,proc-macro (*)
+5quote v1.0.45|default,proc-macro (*)
+5syn v2.0.117|clone-impls,default,derive,extra-traits,full,parsing,printing,proc-macro,visit-mut (*)
+3dunce v1.0.5|
+3heck v0.5.0|
+3lazy_static v1.5.0|
+3platforms v2.0.0|default,std
+3regex v1.12.3|default,perf,perf-backtrack,perf-cache,perf-dfa,perf-inline,perf-literal,perf-onepass,std,unicode,unicode-age,unicode-bool,unicode-case,unicode-gencat,unicode-perl,unicode-script,unicode-segment
+4aho-corasick v1.1.4|perf-literal,std
+5memchr v2.8.0|alloc,std
+4memchr v2.8.0|alloc,std
+4regex-automata v0.4.14|alloc,dfa-onepass,hybrid,meta,nfa-backtrack,nfa-pikevm,nfa-thompson,perf-inline,perf-literal,perf-literal-multisubstring,perf-literal-substring,std,syntax,unicode,unicode-age,unicode-bool,unicode-case,unicode-gencat,unicode-perl,unicode-script,unicode-segment,unicode-word-boundary
+5aho-corasick v1.1.4|perf-literal,std (*)
+5memchr v2.8.0|alloc,std
+5regex-syntax v0.8.10|default,std,unicode,unicode-age,unicode-bool,unicode-case,unicode-gencat,unicode-perl,unicode-script,unicode-segment
+4regex-syntax v0.8.10|default,std,unicode,unicode-age,unicode-bool,unicode-case,unicode-gencat,unicode-perl,unicode-script,unicode-segment
+3semver v1.0.28|default,std
+3serde v1.0.228|default,derive,serde_derive,std
+4serde_core v1.0.228|result,std
+4serde_derive v1.0.228 (proc-macro)|default
+5proc-macro2 v1.0.106|default,proc-macro (*)
+5quote v1.0.45|default,proc-macro (*)
+5syn v2.0.117|clone-impls,default,derive,extra-traits,full,parsing,printing,proc-macro,visit-mut (*)
+3serde_json v1.0.149|default,std
+4itoa v1.0.18|
+4memchr v2.8.0|alloc,std
+4serde_core v1.0.228|result,std
+4zmij v1.0.21|
+3thiserror v2.0.18|default,std
+4thiserror-impl v2.0.18 (proc-macro)| (*)
+3tracing v0.1.44|attributes,default,std,tracing-attributes
+4pin-project-lite v0.2.17|
+4tracing-attributes v0.1.31 (proc-macro)| (*)
+4tracing-core v0.1.36|once_cell,std
+5once_cell v1.21.4|alloc,default,race,std
+2sfio-tokio-ffi v0.9.0|
+3oo-bindgen v0.8.8| (*)
+2sfio-tracing-ffi v0.9.0|
+3oo-bindgen v0.8.8| (*)
+1oo-bindgen v0.8.8| (*)
+1sfio-tokio-ffi v0.9.0| (*)
+1sfio-tracing-ffi v0.9.0| (*)

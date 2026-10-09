@@ -65,6 +65,9 @@ pub(crate) enum License {
     /// Unicode License Agreement - Data Files and Software (2016)
     #[serde(rename = "UnicodeDFS2016")]
     UnicodeDfs2016,
+    /// Apache License 2.0 - <https://www.apache.org/licenses/LICENSE-2.0>
+    #[serde(rename = "Apache2")]
+    Apache2,
 }
 
 /// Information about a dependency
@@ -76,6 +79,10 @@ pub(crate) struct Package {
     pub(crate) source: Source,
     /// license identification
     pub(crate) licenses: Vec<License>,
+    /// set when a build-time dependency copies its own code into the product (e.g. a build
+    /// script writes source it provides), so it ships even though it is not linked
+    #[serde(default)]
+    pub(crate) embedded: bool,
 }
 
 impl Package {
@@ -91,6 +98,18 @@ impl Package {
 pub(crate) struct VendorPackage {
     /// SCM URL where the package is located
     pub(crate) url: String,
+    /// see [`Package::embedded`]
+    #[serde(default)]
+    pub(crate) embedded: bool,
+}
+
+/// The commercial license under which the vendor licenses its own code to the customer
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct CommercialLicense {
+    /// Human readable name of the license
+    pub(crate) name: String,
+    /// URL of the license text
+    pub(crate) url: String,
 }
 
 /// Represent a configuration file for a particular project
@@ -102,6 +121,17 @@ pub(crate) struct Config {
     pub(crate) vendor: BTreeMap<String, VendorPackage>,
     /// 3rd party packages that are allowed to be build dependencies
     pub(crate) third_party: BTreeMap<String, Package>,
+    /// license of first-party and vendor packages, required to generate an SBOM
+    #[serde(default)]
+    pub(crate) commercial_license: Option<CommercialLicense>,
+}
+
+impl Config {
+    /// Whether the package is marked as shipping its code although it is a build-time dependency
+    pub(crate) fn is_embedded(&self, name: &str) -> bool {
+        self.third_party.get(name).is_some_and(|p| p.embedded)
+            || self.vendor.get(name).is_some_and(|p| p.embedded)
+    }
 }
 
 impl License {
@@ -124,6 +154,7 @@ impl License {
             License::Mpl2 => None,
             License::Bsd3 { copyright } => Some(copyright.lines()),
             License::UnicodeDfs2016 => None,
+            License::Apache2 => None,
         }
     }
 
@@ -139,6 +170,7 @@ impl License {
             License::UnicodeDfs2016 => {
                 std::include_str!("../licenses/unicode_dfs_2016.txt")
             }
+            License::Apache2 => std::include_str!("../licenses/apache2.txt"),
             License::Unknown => panic!("You must define unknown licenses"),
         }
     }
@@ -153,6 +185,7 @@ impl License {
             License::Mpl2 => "MPL-2.0",
             License::Bsd3 { .. } => "BSD-3-Clause",
             License::UnicodeDfs2016 => "Unicode-DFS-2016",
+            License::Apache2 => "Apache-2.0",
             License::Unknown => {
                 panic!("You must define unknown licenses")
             }
@@ -169,6 +202,7 @@ impl License {
             License::Mpl2 => "https://spdx.org/licenses/MPL-2.0.html",
             License::Bsd3 { .. } => "https://spdx.org/licenses/BSD-3-Clause.html",
             License::UnicodeDfs2016 => "https://spdx.org/licenses/Unicode-DFS-2016.html",
+            License::Apache2 => "https://spdx.org/licenses/Apache-2.0.html",
             License::Unknown => {
                 panic!("You must define unknown licenses")
             }

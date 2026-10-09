@@ -1,0 +1,29 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+shared = { path = "../shared", features = ["target-feat"] }
+common = { path = "../common" }
+pm = { path = "../pm" }
+optdep = { path = "../optdep", optional = true }
+alias = { package = "alias-target", path = "../alias-target", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+unixonly = { path = "../unixonly" }
+
+[target.'cfg(windows)'.dependencies]
+winonly = { path = "../winonly" }
+
+[build-dependencies]
+tool = { path = "../tool" }
+
+[features]
+default = ["use-alias"]
+use-alias = ["dep:alias"]
+extra = ["dep:optdep"]

@@ -1,0 +1,9 @@
+{
+  "build_only": ["cc"],
+  "vendor": { "dnp3": { "url": "https://github.com/stepfunc/dnp3" } },
+  "third_party": {
+    "serde": { "id": "serde", "source": "crates.io", "licenses": [{ "MIT": { "copyright": "NotPresent" } }] },
+    "ring": { "id": "ring", "source": "crates.io", "licenses": [{ "ISC": { "copyright": { "Lines": ["Copyright 2015-2016 Brian Smith."] } } }, "OpenSSL"] },
+    "tokio": { "id": "tokio", "source": "crates.io", "licenses": [{ "MIT": { "copyright": { "Lines": ["Copyright (c) Tokio Contributors"] } } }] }
+  }
+}

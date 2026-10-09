@@ -1,0 +1,162 @@
+0dnp3-ffi v1.7.0 (/build/dnp3/ffi/dnp3-ffi)|enable-tls,serial,tls
+1dnp3 v1.7.0 (/build/dnp3/dnp3)|enable-tls,ffi,serial,sfio-rustls-config,tls,tokio-rustls,tokio-serial
+2chrono v0.4.44|alloc,clock,default,iana-time-zone,js-sys,now,oldtime,std,wasm-bindgen,wasmbind,winapi,windows-link
+3iana-time-zone v0.1.65|fallback
+3num-traits v0.2.19|
+2scursor v0.2.0|
+2sfio-rustls-config v0.4.0|crypto-ring,default
+3pem v3.0.6|default,std
+4base64 v0.22.1|alloc,std
+3pkcs8 v0.10.2|alloc,encryption,pem,pkcs5,rand_core,std
+4der v0.7.10|alloc,oid,pem,std,zeroize
+5const-oid v0.9.6|
+5pem-rfc7468 v0.7.0|alloc
+6base64ct v1.8.3|alloc
+5zeroize v1.8.2|alloc,default
+4pkcs5 v0.7.1|alloc,pbes2
+5aes v0.8.4|
+6cfg-if v1.0.4|
+6cipher v0.4.4|block-padding
+7crypto-common v0.1.7|
+8generic-array v0.14.7|more_lengths
+9typenum v1.19.0|
+8typenum v1.19.0|
+7inout v0.1.4|block-padding
+8block-padding v0.3.3|
+9generic-array v0.14.7|more_lengths (*)
+8generic-array v0.14.7|more_lengths (*)
+6cpufeatures v0.2.17|
+5cbc v0.1.2|block-padding,default
+6cipher v0.4.4|block-padding (*)
+5der v0.7.10|alloc,oid,pem,std,zeroize (*)
+5pbkdf2 v0.12.2|default,hmac
+6digest v0.10.7|block-buffer,core-api,default,mac,subtle
+7block-buffer v0.10.4|
+8generic-array v0.14.7|more_lengths (*)
+7crypto-common v0.1.7| (*)
+7subtle v2.6.1|
+6hmac v0.12.1|
+7digest v0.10.7|block-buffer,core-api,default,mac,subtle (*)
+5scrypt v0.11.0|
+6pbkdf2 v0.12.2|default,hmac (*)
+6salsa20 v0.10.2|
+7cipher v0.4.4|block-padding (*)
+6sha2 v0.10.9|
+7cfg-if v1.0.4|
+7cpufeatures v0.2.17|
+7digest v0.10.7|block-buffer,core-api,default,mac,subtle (*)
+5sha2 v0.10.9| (*)
+5spki v0.7.3|alloc,pem,std
+6der v0.7.10|alloc,oid,pem,std,zeroize (*)
+4rand_core v0.6.4|
+4spki v0.7.3|alloc,pem,std (*)
+3rustls v0.23.45|log,logging,ring,std,tls12
+4log v0.4.29|std
+4once_cell v1.21.4|alloc,default,race,std
+4ring v0.17.14|alloc,default,dev_urandom_fallback
+5cfg-if v1.0.4|
+5getrandom v0.2.17|
+6cfg-if v1.0.4|
+6libc v0.2.185|default,extra_traits,std
+5untrusted v0.9.0|
+4rustls-pki-types v1.14.0|alloc,default,std
+5zeroize v1.8.2|alloc,default
+4rustls-webpki v0.103.15|alloc,ring,std
+5ring v0.17.14|alloc,default,dev_urandom_fallback (*)
+5rustls-pki-types v1.14.0|alloc,default,std (*)
+5untrusted v0.9.0|
+4subtle v2.6.1|
+4zeroize v1.8.2|alloc,default
+3rustls-pki-types v1.14.0|alloc,default,std (*)
+3rustls-webpki v0.103.15|alloc,ring,std (*)
+3rx509 v0.2.1|
+2tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros
+3bytes v1.11.1|default,std
+3libc v0.2.185|default,extra_traits,std
+3mio v1.2.0|default,log,net,os-ext,os-poll
+4libc v0.2.185|default,extra_traits,std
+4log v0.4.29|std
+3pin-project-lite v0.2.17|
+3socket2 v0.6.3|all
+4libc v0.2.185|default,extra_traits,std
+2tokio-rustls v0.26.4|tls12
+3rustls v0.23.45|log,logging,ring,std,tls12 (*)
+3tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros (*)
+2tokio-serial v5.4.5|
+3cfg-if v1.0.4|
+3futures v0.3.32|alloc,async-await,default,executor,futures-executor,std
+4futures-channel v0.3.32|alloc,futures-sink,sink,std
+5futures-core v0.3.32|alloc,std
+5futures-sink v0.3.32|alloc,std
+4futures-core v0.3.32|alloc,std
+4futures-executor v0.3.32|std
+5futures-core v0.3.32|alloc,std
+5futures-task v0.3.32|alloc,std
+5futures-util v0.3.32|alloc,async-await,async-await-macro,channel,futures-channel,futures-io,futures-macro,futures-sink,io,memchr,sink,slab,std
+6futures-channel v0.3.32|alloc,futures-sink,sink,std (*)
+6futures-core v0.3.32|alloc,std
+6futures-io v0.3.32|std
+6futures-sink v0.3.32|alloc,std
+6futures-task v0.3.32|alloc,std
+6memchr v2.8.0|alloc,default,std
+6pin-project-lite v0.2.17|
+6slab v0.4.12|std
+4futures-io v0.3.32|std
+4futures-sink v0.3.32|alloc,std
+4futures-task v0.3.32|alloc,std
+4futures-util v0.3.32|alloc,async-await,async-await-macro,channel,futures-channel,futures-io,futures-macro,futures-sink,io,memchr,sink,slab,std (*)
+3log v0.4.29|std
+3mio-serial v5.0.6|
+4log v0.4.29|std
+4mio v1.2.0|default,log,net,os-ext,os-poll (*)
+4nix v0.29.0|default,term
+5bitflags v2.11.1|
+5cfg-if v1.0.4|
+5libc v0.2.185|default,extra_traits,std
+4serialport v4.9.0|
+5bitflags v2.11.1|
+5cfg-if v1.0.4|
+5nix v0.26.4|fs,ioctl,poll,process,signal,term
+6bitflags v1.3.2|default
+6cfg-if v1.0.4|
+6libc v0.2.185|default,extra_traits,std
+5scopeguard v1.2.0|default,use_std
+5unescaper v0.1.8|
+6thiserror v2.0.18|default,std
+3serialport v4.9.0| (*)
+3tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros (*)
+2tracing v0.1.44|attributes,default,std,tracing-attributes
+3pin-project-lite v0.2.17|
+3tracing-core v0.1.36|default,once_cell,std
+4once_cell v1.21.4|alloc,default,race,std
+2xxhash-rust v0.8.15|xxh64
+1lazy_static v1.5.0|
+1num_cpus v1.17.0|
+2libc v0.2.185|default,extra_traits,std
+1sfio-promise v0.2.0|
+1tokio v1.52.1|bytes,default,io-std,io-util,libc,macros,mio,net,rt,rt-multi-thread,socket2,sync,time,tokio-macros (*)
+1tracing v0.1.44|attributes,default,std,tracing-attributes (*)
+1tracing-core v0.1.36|default,once_cell,std (*)
+1tracing-subscriber v0.3.23|alloc,ansi,chrono,default,fmt,json,nu-ansi-term,registry,serde,serde_json,sharded-slab,smallvec,std,thread_local,tracing-log,tracing-serde
+2chrono v0.4.44|alloc,clock,default,iana-time-zone,js-sys,now,oldtime,std,wasm-bindgen,wasmbind,winapi,windows-link (*)
+2nu-ansi-term v0.50.3|default,std
+2serde v1.0.228|default,std
+3serde_core v1.0.228|result,std
+2serde_json v1.0.149|default,std
+3itoa v1.0.18|
+3memchr v2.8.0|alloc,default,std
+3serde_core v1.0.228|result,std
+3zmij v1.0.21|
+2sharded-slab v0.1.7|
+3lazy_static v1.5.0|
+2smallvec v1.15.1|
+2thread_local v1.1.9|
+3cfg-if v1.0.4|
+2tracing-core v0.1.36|default,once_cell,std (*)
+2tracing-log v0.2.0|log-tracer,std
+3log v0.4.29|std
+3once_cell v1.21.4|alloc,default,race,std
+3tracing-core v0.1.36|default,once_cell,std (*)
+2tracing-serde v0.2.0|
+3serde v1.0.228|default,std (*)
+3tracing-core v0.1.36|default,once_cell,std (*)

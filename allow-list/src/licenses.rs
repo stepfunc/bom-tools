@@ -191,3 +191,29 @@ fn extract_deps(
 
     Ok(deps)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture(path: &str) -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/cyclonedx")
+            .join(path)
+    }
+
+    /// The deprecated cargo-cyclonedx commands must keep producing exactly the 0.2.1 output
+    /// (the expected files were generated with the 0.2.1 release)
+    #[test]
+    fn cyclonedx_commands_match_0_2_1_output() {
+        let mut out = Vec::new();
+        gen_licenses_in_dirs(&fixture(""), "bom.json", &fixture("allowed.json"), &mut out).unwrap();
+        let expected = std::fs::read_to_string(fixture("expected-dir.txt")).unwrap();
+        assert_eq!(String::from_utf8(out).unwrap(), expected);
+
+        let mut out = Vec::new();
+        gen_licenses(&fixture("a/bom.json"), &fixture("allowed.json"), &mut out).unwrap();
+        let expected = std::fs::read_to_string(fixture("expected-single.txt")).unwrap();
+        assert_eq!(String::from_utf8(out).unwrap(), expected);
+    }
+}

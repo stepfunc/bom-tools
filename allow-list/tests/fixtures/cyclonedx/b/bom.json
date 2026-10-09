@@ -1,0 +1,1 @@
+{"bomFormat":"CycloneDX","specVersion":"1.4","version":1,"components":[{"type":"library","name":"serde","version":"1.0.219"},{"type":"library","name":"tokio","version":"1.52.1"},{"type":"library","name":"dnp3","version":"1.7.0"}]}
