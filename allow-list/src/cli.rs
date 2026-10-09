@@ -99,14 +99,14 @@ impl From<SbomArgs> for SbomOptions {
 #[derive(Args)]
 pub(crate) struct TargetFiles {
     /// path to the `cargo build --message-format json` log
-    #[clap(value_parser, long, short = 'g')]
-    log_path: PathBuf,
+    #[clap(value_parser, long, short = 'g', alias = "log-path")]
+    log: PathBuf,
     /// path to the `cargo tree -e normal,build --prefix depth --format '{p}|{f}'` output
     #[clap(value_parser, long)]
-    tree_path: PathBuf,
+    tree: PathBuf,
     /// path to the `cargo tree -e normal,no-proc-macro --prefix depth --format '{p}|{f}'` output
     #[clap(value_parser, long)]
-    runtime_tree_path: PathBuf,
+    runtime_tree: PathBuf,
 }
 
 /// The build evidence of several targets
@@ -135,9 +135,9 @@ pub(crate) struct Common {
 impl TargetFiles {
     pub(crate) fn evidence(self, common: Common) -> Evidence {
         let target = TargetInput::LogAndTree {
-            log: self.log_path,
-            tree: self.tree_path,
-            runtime_tree: self.runtime_tree_path,
+            log: self.log,
+            tree: self.tree,
+            runtime_tree: self.runtime_tree,
         };
         common.evidence(vec![target])
     }

@@ -2,4 +2,4 @@
 # built for real by the tests in `allow-list/src/fixture_tests.rs`.
 [workspace]
 resolver = "2"
-members = ["app", "shared", "common", "pm", "pmonly", "tool", "alias-target", "optdep", "winonly", "unixonly"]
+members = ["app", "shared", "hostextra", "common", "pm", "pmonly", "tool", "alias-target", "optdep", "winonly", "unixonly"]

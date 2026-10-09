@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[dependencies]
+# only enabled by `host-feat`, which only the proc-macro (host) side requests
+hostextra = { path = "../hostextra", optional = true }
+
 [features]
 target-feat = []
-host-feat = []
+host-feat = ["dep:hostextra"]

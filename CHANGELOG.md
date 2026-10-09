@@ -31,7 +31,7 @@ their output changes (see below). See the README for how to produce the inputs.
 ### Changed
 
 - `gen-licenses-log` / `gen-licenses-log-dir` require `--root-package` and the two
-  `cargo tree` outputs per target (`--tree-path`, `--runtime-tree-path`; fixed names
+  `cargo tree` outputs per target (`--tree`, `--runtime-tree`, and `--log` for `-g`; fixed names
   `build.json`, `tree.txt`, `runtime-tree.txt` in each target directory for the `-dir`
   variant, which no longer takes `--log-file`). `cargo metadata` should be generated with
   `--all-features`.

@@ -288,7 +288,18 @@ fn license_report_lists_exactly_the_shipped_third_party_crates() {
     for not_third_party in ["dnp3", "sfio-promise", "sfio-tokio-ffi"] {
         assert!(!crates.contains(not_third_party), "{not_third_party}");
     }
-    assert_eq!(crates, sbom_required_third_party(&sbom_document()));
+    // the report and the SBOM are projections of the same inventory, down to every version
+    let mut reported = BTreeSet::new();
+    let mut lines = report.lines();
+    while let Some(line) = lines.next() {
+        if let Some(name) = line.strip_prefix("crate: ") {
+            let versions = lines.next().unwrap().strip_prefix("version(s): ").unwrap();
+            for version in versions.split(", ") {
+                reported.insert((name.to_string(), version.to_string()));
+            }
+        }
+    }
+    assert_eq!(reported, sbom_required_third_party(&sbom_document()));
 }
 
 /// The SBOM of all targets, with a fixed timestamp and no serial number
@@ -319,15 +330,20 @@ fn sbom_document() -> serde_json::Value {
 }
 
 /// Names of the `required` components whose license is an SPDX expression (third-party code)
-fn sbom_required_third_party(bom: &serde_json::Value) -> BTreeSet<&str> {
+fn sbom_required_third_party(bom: &serde_json::Value) -> BTreeSet<(String, String)> {
     let config: Config = load("allowed.json");
     bom["components"]
         .as_array()
         .unwrap()
         .iter()
         .filter(|c| c["scope"] == "required")
-        .map(|c| c["name"].as_str().unwrap())
-        .filter(|name| config.third_party.contains_key(*name))
+        .filter(|c| config.third_party.contains_key(c["name"].as_str().unwrap()))
+        .map(|c| {
+            (
+                c["name"].as_str().unwrap().to_string(),
+                c["version"].as_str().unwrap().to_string(),
+            )
+        })
         .collect()
 }
 
@@ -369,10 +385,33 @@ fn sbom_scopes_licenses_hashes_and_edges() {
     );
     assert!(component("dnp3").get("hashes").is_none());
 
-    let lock = std::fs::read_to_string(fixture("Cargo.lock")).unwrap();
-    let serde_hash = component("serde")["hashes"][0]["content"].as_str().unwrap();
-    assert!(lock.contains(&format!("checksum = \"{serde_hash}\"")));
-    assert_eq!(component("serde")["hashes"][0]["alg"], "SHA-256");
+    // every crates.io component carries the checksum of its own (name, version) lock entry
+    let lock: toml::Value =
+        toml::from_str(&std::fs::read_to_string(fixture("Cargo.lock")).unwrap()).unwrap();
+    let locked: BTreeMap<(&str, &str), &str> = lock["package"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|p| {
+            Some((
+                (p["name"].as_str()?, p["version"].as_str()?),
+                p.get("checksum")?.as_str()?,
+            ))
+        })
+        .collect();
+    let mut hashed = 0;
+    for c in components {
+        let key = (c["name"].as_str().unwrap(), c["version"].as_str().unwrap());
+        match locked.get(&key) {
+            Some(checksum) => {
+                assert_eq!(c["hashes"][0]["alg"], "SHA-256");
+                assert_eq!(c["hashes"][0]["content"], *checksum, "{key:?}");
+                hashed += 1;
+            }
+            None => assert!(c.get("hashes").is_none(), "{key:?}"),
+        }
+    }
+    assert!(hashed > 100);
 
     let depends_on = |from: &str, to: &str| {
         let from = format!("pkg:cargo/{from}@");

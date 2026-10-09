@@ -126,26 +126,24 @@ fn approve<'c>(component: &Component, config: &'c Config) -> Result<Approval<'c>
         }
     };
 
+    if let Approval::ThirdParty(approved) = approval {
+        check_entry(name, approved)?;
+    }
     match approval {
         Approval::BuildOnly if runtime => Err(
             "is approved only as a build tool (`build_only`) but now ships in the product"
                 .to_string(),
         ),
         Approval::ThirdParty(approved) if runtime => {
-            check_reviewed_license(name, approved, &component.license)?;
+            check_reviewed_license(approved, &component.license)?;
             Ok(approval)
         }
         _ => Ok(approval),
     }
 }
 
-/// The reviewed licenses must still be part of the declared expression (no stale extras) and
-/// must satisfy it (no newly mandatory licenses)
-fn check_reviewed_license(
-    name: &str,
-    approved: &ApprovedPackage,
-    declared: &DeclaredLicense,
-) -> Result<(), String> {
+/// A `third_party` entry must be well formed, however the package is used
+fn check_entry(name: &str, approved: &ApprovedPackage) -> Result<(), String> {
     if approved.id != name {
         return Err(format!(
             "`third_party` entry is keyed `{name}` but has id `{}`",
@@ -162,6 +160,15 @@ fn check_reviewed_license(
     {
         return Err("`third_party` entry has an `Unknown` license".to_string());
     }
+    Ok(())
+}
+
+/// The reviewed licenses must still be part of the declared expression (no stale extras) and
+/// must satisfy it (no newly mandatory licenses)
+fn check_reviewed_license(
+    approved: &ApprovedPackage,
+    declared: &DeclaredLicense,
+) -> Result<(), String> {
     let expression = match declared {
         DeclaredLicense::Valid(expression) => expression,
         DeclaredLicense::Missing => {
@@ -350,7 +357,13 @@ mod tests {
         let mut json = empty();
         json["third_party"]["x"] =
             serde_json::json!({"id": "x", "source": "crates.io", "licenses": ["Unknown"]});
-        assert!(check(&[("x", Some("MIT"), Role::Runtime)], &config(json))
+        assert!(
+            check(&[("x", Some("MIT"), Role::Runtime)], &config(json.clone()))
+                .unwrap_err()
+                .contains("Unknown")
+        );
+        // entries are checked however the package is used
+        assert!(check(&[("x", Some("MIT"), Role::BuildTime)], &config(json))
             .unwrap_err()
             .contains("Unknown"));
     }

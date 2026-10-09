@@ -25,6 +25,10 @@ name = "common"
 version = "0.1.0"
 
 [[package]]
+name = "hostextra"
+version = "0.1.0"
+
+[[package]]
 name = "optdep"
 version = "0.1.0"
 
@@ -43,6 +47,9 @@ version = "0.1.0"
 [[package]]
 name = "shared"
 version = "0.1.0"
+dependencies = [
+ "hostextra",
+]
 
 [[package]]
 name = "tool"

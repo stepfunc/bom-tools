@@ -24,7 +24,14 @@ fn evidence() -> &'static Evidence {
     static EVIDENCE: OnceLock<Evidence> = OnceLock::new();
     EVIDENCE.get_or_init(|| {
         let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/workspace");
-        let dir = std::env::temp_dir().join(format!("allow-list-fixture-{}", std::process::id()));
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("allow-list-fixture-{}-{nanos}", std::process::id()));
+        // start from an empty target directory, so every artifact is built by this run
+        let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let host = host_triple();
         let args = ["-p", "app", "--target", &host, "--locked", "--offline"];
@@ -158,15 +165,23 @@ fn cargo_classifies_runtime_and_build_time_packages() {
         // a runtime dependency also used (with different features) beneath a proc-macro
         ("shared", Role::Runtime),
         ("unixonly", Role::Runtime),
+        ("winonly", Role::Runtime),
+        // an optional dependency that only the host variant of `shared` enables: Cargo's
+        // resolver keeps host and target features apart, so it does not ship
+        ("hostextra", Role::BuildTime),
         ("pm", Role::BuildTime),
         ("pmonly", Role::BuildTime),
         ("tool", Role::BuildTime),
     ]);
     let expected: BTreeMap<&str, Role> = expected
         .into_iter()
-        .filter(|(name, _)| cfg!(unix) || *name != "unixonly")
+        .filter(|(name, _)| match *name {
+            "unixonly" => cfg!(unix),
+            "winonly" => cfg!(windows),
+            _ => true,
+        })
         .collect();
-    // `optdep` (disabled feature) and `winonly`/`unixonly` (other platform) never compile
+    // `optdep` (disabled feature) and the other platform's dependency never compile
     assert_eq!(roles(&graph), expected);
 }
 
@@ -181,10 +196,14 @@ fn cargo_tree_edges_include_every_expansion() {
         ("app", "tool"),
         ("pm", "pmonly"),
         ("pm", "shared"),
+        ("shared", "hostextra"),
         ("tool", "common"),
     ]);
     if cfg!(unix) {
         expected.insert(("app", "unixonly"));
+    }
+    if cfg!(windows) {
+        expected.insert(("app", "winonly"));
     }
     assert_eq!(edges(&graph), expected);
 }

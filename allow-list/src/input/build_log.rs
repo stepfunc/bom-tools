@@ -1,12 +1,13 @@
 //! Reader for `cargo build --message-format json` logs
 
 use super::{pkgid, Variant};
+use crate::graph::PackageKey;
 use anyhow::anyhow;
 use cargo_metadata::{Message, TargetKind};
 use std::collections::BTreeSet;
 use std::io::BufRead;
 
-/// Kinds of a root artifact that count as a shippable product
+/// Kinds of artifact that count as a shippable product
 const PRODUCT_KINDS: [TargetKind; 6] = [
     TargetKind::Lib,
     TargetKind::RLib,
@@ -20,25 +21,52 @@ const PRODUCT_KINDS: [TargetKind; 6] = [
 const NON_PRODUCT_KINDS: [TargetKind; 3] =
     [TargetKind::Example, TargetKind::Test, TargetKind::Bench];
 
-/// Read and validate a build log, returning the (package, features) variant of every compiled
-/// artifact except build scripts.
-///
-/// The log must come from a successful product build of `root`: it must end with a successful
-/// `build-finished` message, contain no test/example/bench artifacts, and contain a non-`.rmeta`
-/// product artifact for `root` (which rejects `cargo check`).
-pub(crate) fn read<R: BufRead>(log: R, root: &str) -> Result<BTreeSet<Variant>, anyhow::Error> {
-    let mut variants = BTreeSet::new();
-    let mut finished = None;
-    let mut root_product = false;
+/// What a build log proves
+#[derive(Debug)]
+pub(crate) struct BuildLog {
+    /// The (package, features) variant of every compiled artifact except build scripts
+    pub(crate) variants: BTreeSet<Variant>,
+    /// Packages with a product artifact (a library or binary that is not only `.rmeta`)
+    pub(crate) products: BTreeSet<PackageKey>,
+}
 
-    for message in Message::parse_stream(log) {
-        let message = message?;
+/// Read and validate a build log.
+///
+/// The log must come from a successful product build: every JSON line must be a complete
+/// message, it must end with a successful `build-finished` message, and it must contain no
+/// test/example/bench artifacts.
+pub(crate) fn read<R: BufRead>(log: R) -> Result<BuildLog, anyhow::Error> {
+    let mut variants = BTreeSet::new();
+    let mut products = BTreeSet::new();
+    let mut finished = None;
+
+    for (index, line) in log.lines().enumerate() {
+        let line = line?;
+        let line = line.trim();
+        let line_number = index + 1;
         if finished.is_some() {
-            if !matches!(message, Message::TextLine(_)) {
-                return Err(anyhow!("build log has messages after `build-finished`"));
+            if !line.is_empty() {
+                return Err(anyhow!(
+                    "build log line {line_number}: content after `build-finished`"
+                ));
             }
             continue;
         }
+        if !line.starts_with('{') {
+            continue;
+        }
+        // parse the whole line, so that a truncated or concatenated message is an error
+        let value: serde_json::Value = serde_json::from_str(line)
+            .map_err(|err| anyhow!("build log line {line_number}: malformed message: {err}"))?;
+        // compiler diagnostics, build script output and future message kinds carry no scope
+        if !matches!(
+            value["reason"].as_str(),
+            Some("compiler-artifact" | "build-finished")
+        ) {
+            continue;
+        }
+        let message = serde_json::from_value(value)
+            .map_err(|err| anyhow!("build log line {line_number}: malformed message: {err}"))?;
         match message {
             Message::CompilerArtifact(artifact) => {
                 if artifact.profile.test
@@ -59,18 +87,17 @@ pub(crate) fn read<R: BufRead>(log: R, root: &str) -> Result<BTreeSet<Variant>, 
                     continue;
                 }
                 let key = pkgid::parse(&artifact.package_id.repr)?;
-                if key.name == root
-                    && artifact
-                        .target
-                        .kind
-                        .iter()
-                        .any(|k| PRODUCT_KINDS.contains(k))
+                let product = artifact
+                    .target
+                    .kind
+                    .iter()
+                    .any(|k| PRODUCT_KINDS.contains(k))
                     && artifact
                         .filenames
                         .iter()
-                        .any(|f| f.extension() != Some("rmeta"))
-                {
-                    root_product = true;
+                        .any(|f| f.extension() != Some("rmeta"));
+                if product {
+                    products.insert(key.clone());
                 }
                 variants.insert(Variant {
                     key,
@@ -78,9 +105,6 @@ pub(crate) fn read<R: BufRead>(log: R, root: &str) -> Result<BTreeSet<Variant>, 
                 });
             }
             Message::BuildFinished(status) => finished = Some(status.success),
-            Message::TextLine(line) if line.trim_start().starts_with('{') => {
-                return Err(anyhow!("build log contains a malformed message: {line}"));
-            }
             _ => {}
         }
     }
@@ -90,10 +114,7 @@ pub(crate) fn read<R: BufRead>(log: R, root: &str) -> Result<BTreeSet<Variant>, 
             "build log has no `build-finished` message (truncated or failed build?)"
         )),
         Some(false) => Err(anyhow!("build log reports a failed build")),
-        Some(true) if !root_product => Err(anyhow!(
-            "build log has no product artifact for root package `{root}` (wrong -p, or `cargo check`?)"
-        )),
-        Some(true) => Ok(variants),
+        Some(true) => Ok(BuildLog { variants, products }),
     }
 }
 
@@ -165,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn reads_variants_including_fresh_and_skips_build_scripts() {
+    fn reads_variants_and_products_and_skips_build_scripts() {
         let text = log(&[
             "   Compiling serde v1.0.228".to_string(),
             artifact(SERDE, &["custom-build"], &["std"], "/t/build-script-build"),
@@ -178,22 +199,37 @@ mod tests {
             key,
             features: features.iter().map(|f| f.to_string()).collect(),
         };
+        let log = read(text.as_bytes()).unwrap();
         let expected = BTreeSet::from([
             variant(key("serde", "1.0.228"), &["std"]),
             variant(key("serde", "1.0.228"), &["derive", "std"]),
             variant(path_key("app", "1.0.0"), &["default"]),
         ]);
-        assert_eq!(read(text.as_bytes(), "app").unwrap(), expected);
+        assert_eq!(log.variants, expected);
+        assert!(log.products.contains(&path_key("app", "1.0.0")));
     }
 
     #[test]
     fn requires_successful_final_build_finished() {
         let missing = log(&[root_artifact()]);
-        assert!(read(missing.as_bytes(), "app").is_err());
+        assert!(read(missing.as_bytes()).is_err());
         let failed = log(&[root_artifact(), finished(false)]);
-        assert!(read(failed.as_bytes(), "app").is_err());
+        assert!(read(failed.as_bytes()).is_err());
         let after = log(&[finished(true), root_artifact()]);
-        assert!(read(after.as_bytes(), "app").is_err());
+        assert!(read(after.as_bytes()).is_err());
+        let trailing_text = log(&[
+            root_artifact(),
+            finished(true),
+            "{\"reason\":\"compiler-art".to_string(),
+        ]);
+        assert!(read(trailing_text.as_bytes()).is_err());
+        let two_on_one_line = log(&[
+            root_artifact(),
+            format!("{}{}", finished(true), finished(false)),
+        ]);
+        assert!(read(two_on_one_line.as_bytes()).is_err());
+        let blank_after = log(&[root_artifact(), finished(true), String::new()]);
+        assert!(read(blank_after.as_bytes()).is_ok());
     }
 
     #[test]
@@ -203,7 +239,24 @@ mod tests {
             "{\"reason\":\"compiler-artifact\",\"truncated".to_string(),
             finished(true),
         ]);
-        assert!(read(text.as_bytes(), "app").is_err());
+        assert!(read(text.as_bytes()).is_err());
+        let incomplete = log(&[
+            root_artifact(),
+            "{\"reason\":\"compiler-artifact\"}".to_string(),
+            finished(true),
+        ]);
+        assert!(read(incomplete.as_bytes()).is_err());
+    }
+
+    #[test]
+    fn ignores_other_message_kinds() {
+        let text = log(&[
+            "{\"reason\":\"compiler-message\",\"anything\":1}".to_string(),
+            "{\"reason\":\"some-future-message\"}".to_string(),
+            root_artifact(),
+            finished(true),
+        ]);
+        assert!(read(text.as_bytes()).is_ok());
     }
 
     #[test]
@@ -215,23 +268,18 @@ mod tests {
             artifact(ROOT, &["bench"], &[], "/t/bench"),
         ] {
             let text = log(&[root_artifact(), bad, finished(true)]);
-            assert!(read(text.as_bytes(), "app").is_err());
+            assert!(read(text.as_bytes()).is_err());
         }
     }
 
     #[test]
-    fn requires_a_product_artifact_for_the_root() {
-        let check = log(&[
+    fn only_linkable_outputs_are_products() {
+        let text = log(&[
             artifact(ROOT, &["lib"], &[], "/t/libapp.rmeta"),
+            artifact(SERDE, &["lib"], &[], "/t/libserde.rlib"),
             finished(true),
         ]);
-        assert!(read(check.as_bytes(), "app").is_err());
-        let wrong_root = log(&[root_artifact(), finished(true)]);
-        assert!(read(wrong_root.as_bytes(), "other").is_err());
-        let plain_lib = log(&[
-            artifact(ROOT, &["lib"], &[], "/t/libapp.rlib"),
-            finished(true),
-        ]);
-        assert!(read(plain_lib.as_bytes(), "app").is_ok());
+        let log = read(text.as_bytes()).unwrap();
+        assert_eq!(log.products, BTreeSet::from([key("serde", "1.0.228")]));
     }
 }

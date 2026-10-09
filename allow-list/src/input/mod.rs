@@ -1,8 +1,9 @@
 //! Input readers: turn one target's raw build evidence into a [`TargetGraph`].
 //!
 //! This is the only module that knows input formats. Today there is one reader, which combines
-//! a cargo build log with two `cargo tree` outputs produced by the same invocation; see the
-//! README for the producer recipe and for what the cross-checks below do and do not prove.
+//! a cargo build log with two `cargo tree` outputs, run as separate commands with identical
+//! arguments in the build's environment; see the README for the producer recipe and for what
+//! the cross-checks below do and do not prove.
 
 mod build_log;
 mod cargo_tree;
@@ -65,11 +66,11 @@ impl TargetInput {
                 tree,
                 runtime_tree,
             } => {
-                let compiled = build_log::read(BufReader::new(open(log)?), root)
+                let log = build_log::read(BufReader::new(open(log)?))
                     .with_context(|| format!("reading {}", log.display()))?;
                 let tree = parse_tree(tree)?;
                 let runtime = parse_tree(runtime_tree)?;
-                graph_from_log_and_tree(root, &compiled, tree, &runtime)
+                graph_from_log_and_tree(root, &log, tree, &runtime)
             }
         }
     }
@@ -88,7 +89,7 @@ fn parse_tree(path: &Path) -> Result<cargo_tree::Tree, anyhow::Error> {
 /// Cross-check the build log against the trees, then assign roles from the runtime tree
 fn graph_from_log_and_tree(
     root: &str,
-    compiled: &BTreeSet<Variant>,
+    log: &build_log::BuildLog,
     tree: cargo_tree::Tree,
     runtime: &cargo_tree::Tree,
 ) -> Result<TargetGraph, anyhow::Error> {
@@ -96,6 +97,12 @@ fn graph_from_log_and_tree(
         return Err(anyhow!(
             "cargo tree root is `{}`, expected `{root}`",
             tree.root.name
+        ));
+    }
+    if !log.products.contains(&tree.root) {
+        return Err(anyhow!(
+            "the build log has no product artifact for {} (wrong -p, or `cargo check`?)",
+            tree.root
         ));
     }
     if runtime.root != tree.root {
@@ -106,6 +113,7 @@ fn graph_from_log_and_tree(
         ));
     }
 
+    let compiled = &log.variants;
     let compiled_packages: BTreeSet<&PackageKey> = compiled.iter().map(|v| &v.key).collect();
     let tree_packages = tree.packages();
     check_same(
@@ -173,5 +181,101 @@ impl std::fmt::Display for Variant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let features: Vec<&str> = self.features.iter().map(String::as_str).collect();
         write!(f, "{} [{}]", self.key, features.join(","))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_log::BuildLog;
+    use super::*;
+    use crate::graph::test_util::{key, path_key};
+
+    const TREE: &str = "0app v1.0.0 (/build/app)|default\n1serde v1.0.0|std\n1cc v1.0.0|\n";
+    const RUNTIME: &str = "0app v1.0.0 (/build/app)|default\n1serde v1.0.0|std\n";
+
+    fn variant(key: PackageKey, features: &[&str]) -> Variant {
+        Variant {
+            key,
+            features: features.iter().map(|f| f.to_string()).collect(),
+        }
+    }
+
+    fn log() -> BuildLog {
+        BuildLog {
+            variants: BTreeSet::from([
+                variant(path_key("app", "1.0.0"), &["default"]),
+                variant(key("serde", "1.0.0"), &["std"]),
+                variant(key("cc", "1.0.0"), &[]),
+            ]),
+            products: BTreeSet::from([path_key("app", "1.0.0")]),
+        }
+    }
+
+    fn graph(log: &BuildLog, tree: &str, runtime: &str) -> Result<TargetGraph, String> {
+        let tree = cargo_tree::parse(tree).unwrap();
+        let runtime = cargo_tree::parse(runtime).unwrap();
+        graph_from_log_and_tree("app", log, tree, &runtime).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn assigns_roles_from_the_runtime_tree() {
+        let graph = graph(&log(), TREE, RUNTIME).unwrap();
+        assert_eq!(graph.packages()[&key("serde", "1.0.0")], Role::Runtime);
+        assert_eq!(graph.packages()[&key("cc", "1.0.0")], Role::BuildTime);
+        assert_eq!(graph.edges().len(), 2);
+    }
+
+    #[test]
+    fn rejects_a_package_missing_from_either_side() {
+        let mut dropped = log();
+        dropped.variants.remove(&variant(key("cc", "1.0.0"), &[]));
+        assert!(graph(&dropped, TREE, RUNTIME)
+            .unwrap_err()
+            .contains("cc@1.0.0"));
+        let mut extra = log();
+        extra.variants.insert(variant(key("ring", "1.0.0"), &[]));
+        assert!(graph(&extra, TREE, RUNTIME)
+            .unwrap_err()
+            .contains("ring@1.0.0"));
+    }
+
+    #[test]
+    fn rejects_a_variant_with_different_features() {
+        let mut other = log();
+        other
+            .variants
+            .remove(&variant(key("serde", "1.0.0"), &["std"]));
+        other
+            .variants
+            .insert(variant(key("serde", "1.0.0"), &["std", "derive"]));
+        let err = graph(&other, TREE, RUNTIME).unwrap_err();
+        assert!(err.contains("variants"), "{err}");
+    }
+
+    #[test]
+    fn rejects_a_runtime_tree_from_different_arguments() {
+        let runtime = "0app v1.0.0 (/build/app)|default\n1serde v1.0.0|std,alloc\n";
+        let err = graph(&log(), TREE, runtime).unwrap_err();
+        assert!(err.contains("runtime tree has variants missing"), "{err}");
+    }
+
+    #[test]
+    fn rejects_mismatched_roots() {
+        let runtime = "0other v1.0.0 (/build/other)|\n";
+        assert!(graph(&log(), TREE, runtime).unwrap_err().contains("root"));
+        let tree = cargo_tree::parse(TREE).unwrap();
+        let runtime = cargo_tree::parse(RUNTIME).unwrap();
+        assert!(graph_from_log_and_tree("other", &log(), tree, &runtime).is_err());
+    }
+
+    #[test]
+    fn requires_a_product_artifact_for_the_root() {
+        let mut check = log();
+        check.products.clear();
+        // a dependency with the same name does not count
+        check.products.insert(key("app", "2.0.0"));
+        assert!(graph(&check, TREE, RUNTIME)
+            .unwrap_err()
+            .contains("no product artifact"));
     }
 }

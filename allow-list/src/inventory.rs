@@ -70,6 +70,12 @@ pub(crate) fn build<'m>(
     let resolved = resolve(roles.keys().copied(), metadata)?;
     let root = resolved[root_key];
     let workspace: BTreeSet<&PackageId> = metadata.workspace_members.iter().collect();
+    // the root is never approved or license-checked, so it must be our own code
+    if !workspace.contains(&root.id) {
+        return Err(anyhow!(
+            "the root package {root_key} is not a workspace member"
+        ));
+    }
 
     let mut components: Vec<Component> = roles
         .iter()
@@ -340,6 +346,14 @@ mod tests {
             .unwrap();
         assert!(matches!(tool.license, DeclaredLicense::Missing));
         assert!(!tool.first_party);
+    }
+
+    #[test]
+    fn rejects_a_root_that_is_not_a_workspace_member() {
+        let root = key("x", "1.0.0");
+        let meta = metadata(&[(root.clone(), Some("MIT"))]);
+        let err = build(&[graph(&root, &[], &[])], &meta, |_| false).unwrap_err();
+        assert!(err.to_string().contains("not a workspace member"), "{err}");
     }
 
     #[test]

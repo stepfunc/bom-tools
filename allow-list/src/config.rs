@@ -115,7 +115,7 @@ pub(crate) struct CommercialLicense {
 /// Represent a configuration file for a particular project
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Config {
-    /// packages that are build-only dependencies, are not linked/distributed, and are ignored in the build log
+    /// packages approved for use at build time only (not linked or distributed); license not reviewed
     pub(crate) build_only: BTreeSet<String>,
     /// packages that are licensed by the vendor and are distributed under a custom license
     pub(crate) vendor: BTreeMap<String, VendorPackage>,

@@ -59,7 +59,7 @@ never decides scope or roles.
 
 ```sh
 # one target
-allow-list gen-licenses-log -g build.json --tree-path tree.txt --runtime-tree-path runtime-tree.txt \
+allow-list gen-licenses-log -g build.json --tree tree.txt --runtime-tree runtime-tree.txt \
     --root-package dnp3-ffi -m metadata.json -c allowed.json > third-party-licenses.txt
 
 # every target, one subdirectory each (build.json, tree.txt, runtime-tree.txt)
