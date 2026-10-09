@@ -58,6 +58,11 @@ never decides scope or roles.
 
 ## Commands
 
+0.3.0 removed `gen-licenses` / `gen-licenses-dir`, which read `cargo cyclonedx` SBOMs:
+those describe cargo-cyclonedx's own feature selection, not the product's build. Produce the
+build evidence above and use the `*-log` commands; until you migrate, pin
+`cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.1`.
+
 ```sh
 # one target
 allow-list gen-licenses-log -g build.json --tree tree.txt --runtime-tree runtime-tree.txt \
@@ -132,5 +137,7 @@ Supported builds: `cargo build` of a library or binary (`cargo check`, tests, ex
 benches are rejected), crates.io and workspace packages. Not supported: build-script overrides,
 `-Zbuild-std`, and non-Rust components inside `-sys` crates beyond the crate's declared license.
 
-When Cargo's SBOM precursor files (`-Z sbom`) are stable they will replace the build log and
-`cargo tree` inputs ([#8](https://github.com/stepfunc/bom-tools/issues/8)).
+When Cargo's SBOM precursor files (`-Z sbom`) are stable, `allow-list` will read them as its
+build evidence instead of the build log and `cargo tree` outputs
+([#8](https://github.com/stepfunc/bom-tools/issues/8)). The approval rules, the license report
+and the SBOM stay the same; only the input reader changes.

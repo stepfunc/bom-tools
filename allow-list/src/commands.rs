@@ -32,7 +32,7 @@ pub(crate) fn gen_licenses<W: Write>(evidence: &Evidence, w: W) -> Result<(), an
     let config: Config = load_json(&evidence.config)?;
     let metadata: Metadata = load_json(&evidence.metadata)?;
     let validated = validate(evidence, &metadata, &config)?;
-    licenses::write(&validated, w)
+    Ok(licenses::write(&validated, w)?)
 }
 
 /// Options of the SBOM commands

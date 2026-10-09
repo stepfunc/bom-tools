@@ -6,10 +6,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 
 /// Write the license report of a validated inventory
-pub(crate) fn write<W: Write>(
-    validated: &ValidatedInventory,
-    mut w: W,
-) -> Result<(), anyhow::Error> {
+pub(crate) fn write<W: Write>(validated: &ValidatedInventory, mut w: W) -> std::io::Result<()> {
     let shipped = validated.shipped_third_party();
 
     // every license that applies, once, with its text appended at the end
