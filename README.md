@@ -18,7 +18,8 @@ dependency graph could contain. For each target the product is built for:
 2. `cargo tree` (Cargo's own resolver) tells which of them are linked into the product
    (**runtime**) and which only run while building it (**build time**: build scripts,
    proc-macros and their dependencies);
-3. the two are cross-checked, so evidence from a different invocation fails loudly.
+3. the two are cross-checked: if they disagree on the compiled packages or their enabled
+   features (for example a tree made with different flags), the run fails.
 
 Targets are merged (a package that is runtime on any target is runtime), resolved against
 `cargo metadata` for licenses and sources, and approved against `allowed.json`. The license
@@ -98,18 +99,20 @@ features the product was built with.
 }
 ```
 
-Rules, checked on every run (all violations are reported together):
+Rules, checked by the build-evidence commands (`gen-licenses-log*`, `gen-sbom-log*`; all
+violations are reported together). Workspace members are our own code and need no entry; the
+root package must be one.
 
 - every compiled package outside the workspace is in **exactly one** list;
-- a runtime package must be in `third_party` or `vendor`; a `build_only` package that becomes
-  linked into the product is an error;
+- a runtime package outside the workspace must be in `third_party` or `vendor`; a `build_only`
+  package that becomes linked into the product is an error;
 - a build-time package may be in any list;
 - only crates.io and workspace packages are supported;
 - for runtime `third_party` packages, every reviewed license must be part of the package's
   declared SPDX `license`, and the reviewed licenses must satisfy it (reviewed `MIT` satisfies
   `MIT OR Apache-2.0` but not `MIT AND Apache-2.0`).
 
-`embedded: true` marks a build-time dependency whose own code ships anyway (for example a build
+`commercial_license` is required by the SBOM commands. `embedded: true` marks a build-time dependency whose own code ships anyway (for example a build
 script that copies source it provides into the product); it is treated as runtime, its
 dependencies are not. License names: `MIT`, `ISC`, `BSD3` (with `copyright`), `Apache2`,
 `OpenSSL`, `BSLv1`, `MPLv2`, `UnicodeDFS2016`.
@@ -117,8 +120,9 @@ dependencies are not. License names: `MIT`, `ISC`, `BSD3` (with `copyright`), `A
 ## Guarantees and limits
 
 The cross-checks prove that the full `cargo tree` has exactly the packages, and exactly the
-(package, enabled features) variants, of the build log, and that the runtime tree is part of
-the full tree. That catches different feature flags, wider builds and dropped artifacts whose
+(package, enabled features) variants, of the build log, and that every variant in the runtime
+tree is also in the full tree. They do not prove that the files came from one invocation, nor
+anything about edges. That catches different feature flags, wider builds and dropped artifacts whose
 features differ from the package's other variants.
 
 Not detected, so guaranteed only by producing the files as above:

@@ -21,6 +21,12 @@ const PRODUCT_KINDS: [TargetKind; 6] = [
 const NON_PRODUCT_KINDS: [TargetKind; 3] =
     [TargetKind::Example, TargetKind::Test, TargetKind::Bench];
 
+/// Just the kind of a cargo JSON message
+#[derive(serde::Deserialize)]
+struct MessageKind {
+    reason: Option<String>,
+}
+
 /// What a build log proves
 #[derive(Debug)]
 pub(crate) struct BuildLog {
@@ -55,18 +61,21 @@ pub(crate) fn read<R: BufRead>(log: R) -> Result<BuildLog, anyhow::Error> {
         if !line.starts_with('{') {
             continue;
         }
-        // parse the whole line, so that a truncated or concatenated message is an error
-        let value: serde_json::Value = serde_json::from_str(line)
-            .map_err(|err| anyhow!("build log line {line_number}: malformed message: {err}"))?;
-        // compiler diagnostics, build script output and future message kinds carry no scope
+        // Deserialize the original line (never an intermediate `Value`, which would silently
+        // keep the last of duplicate keys), so a truncated, concatenated or ambiguous message
+        // is an error. Other message kinds (diagnostics, build script output, future kinds)
+        // carry no scope and are skipped.
+        let malformed = |err: serde_json::Error| {
+            anyhow!("build log line {line_number}: malformed message: {err}")
+        };
+        let kind: MessageKind = serde_json::from_str(line).map_err(malformed)?;
         if !matches!(
-            value["reason"].as_str(),
+            kind.reason.as_deref(),
             Some("compiler-artifact" | "build-finished")
         ) {
             continue;
         }
-        let message = serde_json::from_value(value)
-            .map_err(|err| anyhow!("build log line {line_number}: malformed message: {err}"))?;
+        let message: Message = serde_json::from_str(line).map_err(malformed)?;
         match message {
             Message::CompilerArtifact(artifact) => {
                 if artifact.profile.test
@@ -228,6 +237,21 @@ mod tests {
             format!("{}{}", finished(true), finished(false)),
         ]);
         assert!(read(two_on_one_line.as_bytes()).is_err());
+        let ambiguous = log(&[
+            root_artifact(),
+            "{\"reason\":\"build-finished\",\"success\":false,\"success\":true}".to_string(),
+        ]);
+        assert!(read(ambiguous.as_bytes()).is_err());
+        let duplicate_reason = log(&[
+            root_artifact(),
+            "{\"reason\":\"compiler-message\",\"reason\":\"build-finished\",\"success\":true}"
+                .to_string(),
+        ]);
+        assert!(read(duplicate_reason.as_bytes()).is_err());
+        let duplicate_features =
+            root_artifact().replacen("\"features\":", "\"features\":[],\"features\":", 1);
+        let text = log(&[duplicate_features, finished(true)]);
+        assert!(read(text.as_bytes()).is_err());
         let blank_after = log(&[root_artifact(), finished(true), String::new()]);
         assert!(read(blank_after.as_bytes()).is_ok());
     }

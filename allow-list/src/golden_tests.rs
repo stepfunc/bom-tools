@@ -443,7 +443,11 @@ fn sbom_needs_a_commercial_license_and_lockfile_checksums() {
     let mut evidence = all_targets();
     let mut config: serde_json::Value = load("allowed.json");
     config.as_object_mut().unwrap().remove("commercial_license");
-    let dir = std::env::temp_dir().join(format!("allow-list-golden-{}", std::process::id()));
+    let dir = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("allow-list-golden-config");
     std::fs::create_dir_all(&dir).unwrap();
     evidence.config = dir.join("allowed.json");
     std::fs::write(&evidence.config, config.to_string()).unwrap();
